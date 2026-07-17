@@ -235,7 +235,7 @@
         <div class="controls">
             <strong>Controls:</strong><br>
             Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
-            On phone: tilt left/right to run, tap JUMP to jump<br>
+            On phone: tilt left/right to run, tap anywhere on screen to jump<br>
             Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
             <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
             <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
@@ -244,7 +244,7 @@
         <div class="touch-controls" id="touchControls">
             <button class="tc-btn tc-tilt-enable" id="tiltEnableBtn">Enable Tilt Controls</button>
             <button class="tc-btn tc-jump" data-action="jump">JUMP</button>
-            <div class="tilt-status" id="tiltStatus">Tilt your phone left/right to move &bull; tap JUMP to jump</div>
+            <div class="tilt-status" id="tiltStatus">Tilt your phone left/right to move &bull; tap anywhere to jump</div>
         </div>
 
         <a class="home-link" href="index.html">&larr; Back to Menu</a>
@@ -772,6 +772,13 @@
                     keys['right'] = false;
                     break;
             }
+        });
+
+        // Any tap on the screen jumps (touch devices), except on actual buttons/links
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType !== 'touch') return;
+            if (e.target.closest('button, a')) return;
+            keys['jump'] = true;
         });
 
         // On-screen jump button (touch devices)
