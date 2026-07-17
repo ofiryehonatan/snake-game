@@ -61,63 +61,19 @@
             flex-wrap: wrap;
         }
 
-        .mined-box, .best-box, .depth-box {
+        .revealed-box, .flags-box, .best-box {
             background: rgba(255, 255, 255, 0.2);
-            padding: 12px 22px;
+            padding: 12px 20px;
             border-radius: 10px;
             color: white;
-            font-size: 1.1em;
+            font-size: 1.05em;
             border: 2px solid white;
         }
 
-        .mined-box span, .best-box span, .depth-box span {
+        .revealed-box span, .flags-box span, .best-box span {
             font-weight: bold;
-            font-size: 1.4em;
+            font-size: 1.3em;
             color: #9be564;
-        }
-
-        .hotbar {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-
-        .hotbar-slot {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            border-radius: 10px;
-            padding: 8px 10px;
-            color: white;
-            cursor: pointer;
-            font-size: 0.75em;
-            transition: all 0.15s ease;
-        }
-
-        .hotbar-slot:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
-
-        .hotbar-slot.selected {
-            border-color: #ffd700;
-            box-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
-        }
-
-        .hotbar-swatch {
-            width: 26px;
-            height: 26px;
-            border-radius: 4px;
-            border: 1px solid rgba(0, 0, 0, 0.4);
-        }
-
-        .hotbar-count {
-            font-weight: bold;
-            color: #ffd700;
         }
 
         .controls {
@@ -131,7 +87,7 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             margin-top: 20px;
             user-select: none;
         }
@@ -148,12 +104,12 @@
         }
 
         .tc-btn {
-            width: 72px;
-            height: 116px;
-            font-size: 1.8em;
+            width: 64px;
+            height: 64px;
+            font-size: 1.5em;
             background: rgba(255, 255, 255, 0.2);
             border: 2px solid white;
-            border-radius: 10px;
+            border-radius: 12px;
             color: white;
             touch-action: none;
             padding: 0;
@@ -161,6 +117,24 @@
 
         .tc-btn:active {
             background: rgba(255, 255, 255, 0.45);
+        }
+
+        .tc-jump {
+            width: 84px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .tc-flag {
+            width: 220px;
+            height: 50px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .tc-flag.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
         }
 
         .button-group {
@@ -192,6 +166,45 @@
             transform: scale(0.98);
         }
 
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #9be564;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            max-width: 90vw;
+        }
+
+        .game-over h2 {
+            color: #9be564;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            color: white;
+            font-size: 1.05em;
+            margin-bottom: 20px;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
         .home-link {
             display: block;
             color: white;
@@ -212,32 +225,9 @@
         <canvas id="gameCanvas" width="400" height="400"></canvas>
 
         <div class="info">
-            <div class="mined-box">Mined: <span id="mined">0</span></div>
+            <div class="revealed-box">Revealed: <span id="revealed">0/0</span></div>
+            <div class="flags-box">Flags: <span id="flags">0</span></div>
             <div class="best-box">Best: <span id="best">0</span></div>
-            <div class="depth-box">Depth: <span id="depth">0</span></div>
-        </div>
-
-        <div class="hotbar" id="hotbar">
-            <button class="hotbar-slot selected" data-slot="0" onclick="selectSlot(0)">
-                <span class="hotbar-swatch" style="background:#8b5a2b;"></span>
-                <span>Dirt</span>
-                <span class="hotbar-count" id="count-2">0</span>
-            </button>
-            <button class="hotbar-slot" data-slot="1" onclick="selectSlot(1)">
-                <span class="hotbar-swatch" style="background:#8a8a8a;"></span>
-                <span>Stone</span>
-                <span class="hotbar-count" id="count-3">0</span>
-            </button>
-            <button class="hotbar-slot" data-slot="2" onclick="selectSlot(2)">
-                <span class="hotbar-swatch" style="background:#96651f;"></span>
-                <span>Wood</span>
-                <span class="hotbar-count" id="count-4">0</span>
-            </button>
-            <button class="hotbar-slot" data-slot="3" onclick="selectSlot(3)">
-                <span class="hotbar-swatch" style="background:#2f7a2f;"></span>
-                <span>Leaves</span>
-                <span class="hotbar-count" id="count-5">0</span>
-            </button>
         </div>
 
         <div class="button-group">
@@ -248,100 +238,107 @@
 
         <div class="controls">
             <strong>Controls:</strong><br>
-            Arrow Keys / WASD to move &nbsp;•&nbsp; Space to pause<br>
-            Desktop: <strong>Left-click</strong> a block to mine it, <strong>right-click</strong> an empty tile to place<br>
-            Touch: tap a block to mine, tap empty space to place &nbsp;•&nbsp; pick a block on the hotbar first<br>
-            You can only reach blocks right next to you (the highlighted 3&times;3 area)
+            Arrow Keys / A,D to run &nbsp;•&nbsp; Up / W / Space to jump (only while grounded)<br>
+            Desktop: <strong>Left-click</strong> a block to mine it, <strong>right-click</strong> to flag it<br>
+            Touch: use the D-pad to move, tap a block to mine (or flag, with Flag Mode on)<br>
+            15% of the ground hides bombs &mdash; mining one ends the game. Flagged blocks stay solid and safe.
         </div>
 
         <div class="touch-controls" id="touchControls">
             <div class="tc-row">
-                <button class="tc-btn" data-dir="up">&#9650;</button>
+                <button class="tc-btn" data-action="left">&#9664;</button>
+                <button class="tc-btn tc-jump" data-action="jump">JUMP</button>
+                <button class="tc-btn" data-action="right">&#9654;</button>
             </div>
-            <div class="tc-row">
-                <button class="tc-btn" data-dir="left">&#9664;</button>
-                <button class="tc-btn" data-dir="down">&#9660;</button>
-                <button class="tc-btn" data-dir="right">&#9654;</button>
-            </div>
+            <button class="tc-flag" id="flagModeBtn" onclick="toggleFlagMode()">🚩 Flag Mode: OFF</button>
         </div>
 
         <a href="index.html" class="home-link">&larr; Back to Menu</a>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="game-over" id="gameOverModal">
+        <h2 id="gameOverTitle">GAME OVER</h2>
+        <p id="gameOverMessage"></p>
+        <button onclick="resetGame()">Play Again</button>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // ---- Grid / world constants ----
         const gridSize = 25;
-        const tileCount = canvas.width / gridSize; // 16x16 world
+        const COLS = canvas.width / gridSize;   // 16
+        const ROWS = canvas.height / gridSize;  // 16
+        const SKY_ROWS = 6;                     // permanently open air, gives room to jump
+        const BOMB_RATE = 0.15;                 // configurable: fraction of terrain cells that are bombs
 
-        const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5 };
-        const BLOCK_NAMES = { 2: 'Dirt', 3: 'Stone', 4: 'Wood', 5: 'Leaves' };
-        const BLOCK_COLORS = { 1: '#5fae3f', 2: '#8b5a2b', 3: '#8a8a8a', 4: '#96651f', 5: '#2f7a2f' };
-        const HOTBAR = [BLOCK.DIRT, BLOCK.STONE, BLOCK.WOOD, BLOCK.LEAVES];
+        // ---- Platformer physics constants ----
+        const GRAVITY = 0.5;
+        const MOVE_SPEED = 2.2;
+        const JUMP_VELOCITY = -8;
+        const MAX_FALL_SPEED = 10;              // capped below gridSize so collision checks can't tunnel through a block
+        const PLAYER_W = 16;
+        const PLAYER_H = 22;
 
-        const GRASS_ROW = 8;
-        const DIRT_ROWS = 3;
-        const PLAYER_START_X = Math.floor(tileCount / 2);
-        const PLAYER_START_Y = GRASS_ROW - 1;
+        const NUMBER_COLORS = { 1: '#4fa8e0', 2: '#5fae3f', 3: '#ff6b6b', 4: '#9b59b6', 5: '#8b5a2b', 6: '#2f9e9e', 7: '#222222', 8: '#777777' };
 
-        let world, player, inventory, selectedSlot, minedCount, bestMined;
-        let gameRunning, gamePaused, hoverCell, clouds, floatingTexts, particles;
+        let grid, bombCount, totalNonBombTerrainCells, revealedTerrainCount, flagCount, bestRevealed;
+        let player, keys, isGrounded, gameRunning, gamePaused, hoverCell, flagMode, particles;
 
-        function pickTreeColumns() {
-            const candidates = [];
-            for (let x = 1; x < tileCount - 1; x++) {
-                if (Math.abs(x - PLAYER_START_X) > 1) candidates.push(x);
-            }
-            for (let i = candidates.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-            }
-            return candidates.slice(0, 3);
-        }
-
-        function generateWorld() {
-            const w = [];
-            for (let y = 0; y < tileCount; y++) {
-                const row = [];
-                for (let x = 0; x < tileCount; x++) {
-                    let block = BLOCK.AIR;
-                    if (y === GRASS_ROW) block = BLOCK.GRASS;
-                    else if (y > GRASS_ROW && y <= GRASS_ROW + DIRT_ROWS) block = BLOCK.DIRT;
-                    else if (y > GRASS_ROW + DIRT_ROWS) block = BLOCK.STONE;
-                    row.push(block);
-                }
-                w.push(row);
-            }
-
-            for (const tx of pickTreeColumns()) {
-                w[GRASS_ROW - 1][tx] = BLOCK.WOOD;
-                w[GRASS_ROW - 2][tx] = BLOCK.WOOD;
-                for (let ly = GRASS_ROW - 4; ly <= GRASS_ROW - 3; ly++) {
-                    for (let lx = tx - 1; lx <= tx + 1; lx++) {
-                        if (lx >= 0 && lx < tileCount && w[ly][lx] === BLOCK.AIR) w[ly][lx] = BLOCK.LEAVES;
+        // ---- Minesweeper grid generation ----
+        function generateGrid() {
+            const g = [];
+            for (let row = 0; row < ROWS; row++) {
+                const r = [];
+                for (let col = 0; col < COLS; col++) {
+                    if (row < SKY_ROWS) {
+                        // Sky cells are permanently open air, not part of the minefield
+                        r.push({ isSky: true, isBomb: false, count: 0, state: 'revealed', flagged: false });
+                    } else {
+                        r.push({ isSky: false, isBomb: false, count: 0, state: 'hidden', flagged: false });
                     }
                 }
+                g.push(r);
             }
-            return w;
-        }
 
-        function initClouds() {
-            clouds = [];
-            for (let i = 0; i < 4; i++) {
-                clouds.push({
-                    x: Math.random() * canvas.width,
-                    y: 20 + Math.random() * 90,
-                    r: 12 + Math.random() * 10,
-                    speed: 0.1 + Math.random() * 0.15
-                });
+            // Keep a small safe zone around the spawn column so the player always has a fair start
+            const spawnCol = Math.floor(COLS / 2);
+            const isSafeZone = (col, row) => row < SKY_ROWS + 2 && Math.abs(col - spawnCol) <= 1;
+
+            const terrainCellCount = (ROWS - SKY_ROWS) * COLS;
+            const bombs = Math.round(terrainCellCount * BOMB_RATE);
+            let placed = 0;
+            while (placed < bombs) {
+                const row = SKY_ROWS + Math.floor(Math.random() * (ROWS - SKY_ROWS));
+                const col = Math.floor(Math.random() * COLS);
+                if (g[row][col].isBomb || isSafeZone(col, row)) continue;
+                g[row][col].isBomb = true;
+                placed++;
             }
+
+            // Pre-calculate each non-bomb cell's neighboring bomb count (all 8 directions)
+            for (let row = SKY_ROWS; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (g[row][col].isBomb) continue;
+                    let count = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nr = row + dy, nc = col + dx;
+                            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && g[nr][nc].isBomb) count++;
+                        }
+                    }
+                    g[row][col].count = count;
+                }
+            }
+
+            return { grid: g, bombCount: bombs, terrainCellCount };
         }
 
         // ---- Audio: procedurally generated chiptune music + SFX (no audio files needed) ----
-        const NOTE_FREQ = {
-            'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00
-        };
+        const NOTE_FREQ = { 'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00 };
         const MUSIC_MELODY = ['C4', 'D4', 'F4', 'G4', 'A4', null, 'G4', 'F4', 'A3', 'C4', 'D4', 'F4', 'D4', 'C4', null, null];
         const MUSIC_STEP = 0.25;
 
@@ -403,30 +400,54 @@
             if (!musicMuted) startMusicLoopIfNeeded();
         }
 
-        function playMineSound() {
+        function playJumpSound() {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
             osc.type = 'square';
             osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.09);
-            g.gain.setValueAtTime(0.16, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
+            g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
             osc.connect(g);
             g.connect(masterGain);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.12);
+            osc.stop(audioCtx.currentTime + 0.13);
         }
 
-        function playPlaceSound() {
+        function playRevealSound() {
             if (!audioCtx) return;
-            playTone(300, audioCtx.currentTime, 0.09, 'triangle', 0.14);
-            playTone(500, audioCtx.currentTime + 0.05, 0.09, 'triangle', 0.12);
+            playTone(500, audioCtx.currentTime, 0.08, 'square', 0.13);
+        }
+
+        function playFlagSound() {
+            if (!audioCtx) return;
+            playTone(700, audioCtx.currentTime, 0.06, 'triangle', 0.12);
         }
 
         function playInvalidSound() {
             if (!audioCtx) return;
             playTone(140, audioCtx.currentTime, 0.15, 'sawtooth', 0.12);
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.5);
+            g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.55);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        }
+
+        function playWinSound() {
+            if (!audioCtx) return;
+            [523, 659, 784, 1047].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.12, 0.18, 'triangle', 0.16));
         }
 
         let audioUnlockedOnce = false;
@@ -455,29 +476,37 @@
 
         // ---- Game state ----
         function resetGame() {
-            world = generateWorld();
-            player = { x: PLAYER_START_X, y: PLAYER_START_Y };
-            inventory = { 2: 0, 3: 0, 4: 0, 5: 0 };
-            selectedSlot = 0;
-            minedCount = 0;
+            const gen = generateGrid();
+            grid = gen.grid;
+            bombCount = gen.bombCount;
+            totalNonBombTerrainCells = gen.terrainCellCount - gen.bombCount;
+            revealedTerrainCount = 0;
+            flagCount = 0;
+
+            const spawnCol = Math.floor(COLS / 2);
+            player = {
+                x: spawnCol * gridSize + (gridSize - PLAYER_W) / 2,
+                y: SKY_ROWS * gridSize - PLAYER_H,
+                vx: 0,
+                vy: 0
+            };
+            keys = { left: false, right: false, jump: false };
+            isGrounded = false;
             gameRunning = true;
             gamePaused = false;
             hoverCell = null;
-            floatingTexts = [];
             particles = [];
-            initClouds();
+
             document.getElementById('pauseBtn').textContent = 'Pause';
-            document.querySelectorAll('.hotbar-slot').forEach((el, i) => el.classList.toggle('selected', i === 0));
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('gameOverModal').style.display = 'none';
             updateHUD();
         }
 
         function updateHUD() {
-            document.getElementById('mined').textContent = minedCount;
-            document.getElementById('best').textContent = bestMined;
-            document.getElementById('depth').textContent = Math.max(0, player.y - GRASS_ROW);
-            for (const b of HOTBAR) {
-                document.getElementById('count-' + b).textContent = inventory[b] || 0;
-            }
+            document.getElementById('revealed').textContent = revealedTerrainCount + '/' + totalNonBombTerrainCells;
+            document.getElementById('flags').textContent = flagCount;
+            document.getElementById('best').textContent = bestRevealed;
         }
 
         function togglePause() {
@@ -487,81 +516,237 @@
             }
         }
 
-        function selectSlot(i) {
-            selectedSlot = i;
-            document.querySelectorAll('.hotbar-slot').forEach((el, idx) => el.classList.toggle('selected', idx === i));
+        function toggleFlagMode() {
+            flagMode = !flagMode;
+            const btn = document.getElementById('flagModeBtn');
+            btn.textContent = flagMode ? '🚩 Flag Mode: ON' : '🚩 Flag Mode: OFF';
+            btn.classList.toggle('active', flagMode);
         }
 
-        function addFloatingText(text, gridX, gridY, color) {
-            floatingTexts.push({
-                text,
-                x: gridX * gridSize + gridSize / 2,
-                y: gridY * gridSize + gridSize / 2,
-                life: 40,
-                color
-            });
+        function showModal(title, message) {
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverMessage').textContent = message;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('gameOverModal').style.display = 'block';
         }
 
-        function addBurst(gridX, gridY, color) {
-            const cx = gridX * gridSize + gridSize / 2;
-            const cy = gridY * gridSize + gridSize / 2;
-            for (let i = 0; i < 8; i++) {
-                const angle = (Math.PI * 2 * i) / 8;
+        function addBurst(col, row, color) {
+            const cx = col * gridSize + gridSize / 2;
+            const cy = row * gridSize + gridSize / 2;
+            for (let i = 0; i < 10; i++) {
+                const angle = (Math.PI * 2 * i) / 10;
                 particles.push({
                     x: cx, y: cy,
-                    vx: Math.cos(angle) * 1.8,
-                    vy: Math.sin(angle) * 1.8,
-                    life: 18,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 20,
                     color
                 });
             }
         }
 
-        function inReach(x, y) {
-            return Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= 1;
+        function getPlayerCell() {
+            return {
+                col: Math.floor((player.x + PLAYER_W / 2) / gridSize),
+                row: Math.floor((player.y + PLAYER_H / 2) / gridSize)
+            };
         }
 
-        function tryMine(x, y) {
-            if (gamePaused || !gameRunning) return;
-            if (x < 0 || x >= tileCount || y < 0 || y >= tileCount) return;
-            if (!inReach(x, y)) { playInvalidSound(); return; }
-            const block = world[y][x];
-            if (block === BLOCK.AIR) return;
-            const yieldBlock = block === BLOCK.GRASS ? BLOCK.DIRT : block;
-            inventory[yieldBlock] = (inventory[yieldBlock] || 0) + 1;
-            world[y][x] = BLOCK.AIR;
-            minedCount++;
-            bestMined = Math.max(bestMined, minedCount);
-            localStorage.setItem('minerBestMined', bestMined);
-            addFloatingText('+1 ' + BLOCK_NAMES[yieldBlock], x, y, BLOCK_COLORS[yieldBlock]);
-            addBurst(x, y, BLOCK_COLORS[yieldBlock]);
-            playMineSound();
+        function inReach(col, row) {
+            const pc = getPlayerCell();
+            return Math.max(Math.abs(col - pc.col), Math.abs(row - pc.row)) <= 1;
+        }
+
+        // Flood-fill reveal: standard Minesweeper cascade. Only expands through
+        // connected zero-count cells; number cells get revealed but don't propagate.
+        // Bombs and flagged cells are never auto-revealed by a cascade.
+        function revealCell(startCol, startRow) {
+            const queue = [[startCol, startRow]];
+            const seen = new Set();
+            while (queue.length) {
+                const [cx, cy] = queue.shift();
+                const key = cx + ',' + cy;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                if (cy < 0 || cy >= ROWS || cx < 0 || cx >= COLS) continue;
+
+                const c = grid[cy][cx];
+                if (c.isSky || c.isBomb || c.flagged || c.state === 'revealed') continue;
+
+                c.state = 'revealed';
+                revealedTerrainCount++;
+
+                if (c.count === 0) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            queue.push([cx + dx, cy + dy]);
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkWinCondition() {
+            if (gameRunning && revealedTerrainCount >= totalNonBombTerrainCells) {
+                gameRunning = false;
+                bestRevealed = Math.max(bestRevealed, revealedTerrainCount);
+                localStorage.setItem('minerBestRevealed', bestRevealed);
+                playWinSound();
+                showModal('🏆 YOU WIN!', 'You safely revealed all ' + totalNonBombTerrainCells + ' blocks!');
+                updateHUD();
+            }
+        }
+
+        function triggerLoss(col, row) {
+            gameRunning = false;
+            bestRevealed = Math.max(bestRevealed, revealedTerrainCount);
+            localStorage.setItem('minerBestRevealed', bestRevealed);
+            // Reveal every bomb on the board so the player can see where they all were
+            for (let r = SKY_ROWS; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c].isBomb) grid[r][c].state = 'revealed';
+                }
+            }
+            addBurst(col, row, '#ff6b6b');
+            addBurst(col, row, '#ffae42');
+            playExplosionSound();
+            showModal('💥 BOOM!', 'You hit a bomb. Revealed ' + revealedTerrainCount + ' / ' + totalNonBombTerrainCells + ' safe blocks.');
             updateHUD();
         }
 
-        function tryPlace(x, y) {
+        function tryMine(col, row) {
             if (gamePaused || !gameRunning) return;
-            if (x < 0 || x >= tileCount || y < 0 || y >= tileCount) return;
-            if (x === player.x && y === player.y) { playInvalidSound(); return; }
-            if (!inReach(x, y)) { playInvalidSound(); return; }
-            if (world[y][x] !== BLOCK.AIR) { playInvalidSound(); return; }
-            const block = HOTBAR[selectedSlot];
-            if (!inventory[block]) { playInvalidSound(); return; }
-            world[y][x] = block;
-            inventory[block]--;
-            addFloatingText('-1 ' + BLOCK_NAMES[block], x, y, BLOCK_COLORS[block]);
-            playPlaceSound();
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+            const cell = grid[row][col];
+            if (cell.isSky || cell.state === 'revealed' || cell.flagged) return;
+            if (!inReach(col, row)) { playInvalidSound(); return; }
+
+            if (cell.isBomb) {
+                triggerLoss(col, row);
+                return;
+            }
+
+            revealCell(col, row);
+            playRevealSound();
+            addBurst(col, row, '#dfe6e9');
+            checkWinCondition();
+        }
+
+        function tryFlag(col, row) {
+            if (gamePaused || !gameRunning) return;
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+            const cell = grid[row][col];
+            if (cell.isSky || cell.state === 'revealed') return;
+            if (!inReach(col, row)) { playInvalidSound(); return; }
+
+            cell.flagged = !cell.flagged;
+            flagCount += cell.flagged ? 1 : -1;
+            playFlagSound();
             updateHUD();
         }
 
-        function tryMove(dx, dy) {
-            if (gamePaused || !gameRunning) return;
-            const nx = player.x + dx, ny = player.y + dy;
-            if (nx < 0 || nx >= tileCount || ny < 0 || ny >= tileCount) return;
-            if (world[ny][nx] !== BLOCK.AIR) return;
-            player.x = nx;
-            player.y = ny;
-            updateHUD();
+        // ---- Platformer collision: a solid cell is any hidden (unmined) terrain
+        // cell, flagged or not. Revealed cells and permanent sky are passable.
+        // The top is still a solid ceiling, but left/right/bottom are intentionally
+        // passable here - screen wrapping (below) handles what happens once the
+        // player actually crosses those edges, instead of walls stopping them.
+        function isSolid(col, row) {
+            if (row < 0) return true;
+            if (col < 0 || col >= COLS || row >= ROWS) return false;
+            return grid[row][col].state === 'hidden';
+        }
+
+        function resolveHorizontalCollisions() {
+            const top = Math.floor((player.y + 1) / gridSize);
+            const bottom = Math.floor((player.y + PLAYER_H - 1) / gridSize);
+
+            if (player.vx > 0) {
+                const rightCol = Math.floor((player.x + PLAYER_W) / gridSize);
+                for (let row = top; row <= bottom; row++) {
+                    if (isSolid(rightCol, row)) {
+                        player.x = rightCol * gridSize - PLAYER_W;
+                        player.vx = 0;
+                        break;
+                    }
+                }
+            } else if (player.vx < 0) {
+                const leftCol = Math.floor(player.x / gridSize);
+                for (let row = top; row <= bottom; row++) {
+                    if (isSolid(leftCol, row)) {
+                        player.x = (leftCol + 1) * gridSize;
+                        player.vx = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function resolveVerticalCollisions() {
+            const left = Math.floor((player.x + 2) / gridSize);
+            const right = Math.floor((player.x + PLAYER_W - 2) / gridSize);
+            isGrounded = false;
+
+            if (player.vy > 0) {
+                const bottomRow = Math.floor((player.y + PLAYER_H) / gridSize);
+                for (let col = left; col <= right; col++) {
+                    if (isSolid(col, bottomRow)) {
+                        player.y = bottomRow * gridSize - PLAYER_H;
+                        player.vy = 0;
+                        isGrounded = true;
+                        break;
+                    }
+                }
+            } else if (player.vy < 0) {
+                const topRow = Math.floor(player.y / gridSize);
+                for (let col = left; col <= right; col++) {
+                    if (isSolid(col, topRow)) {
+                        player.y = (topRow + 1) * gridSize;
+                        player.vy = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function update() {
+            // Horizontal movement
+            player.vx = 0;
+            if (keys.left) player.vx = -MOVE_SPEED;
+            if (keys.right) player.vx = MOVE_SPEED;
+            player.x += player.vx;
+            resolveHorizontalCollisions();
+
+            // Jump - only allowed while grounded, no free-flying
+            if (keys.jump && isGrounded) {
+                player.vy = JUMP_VELOCITY;
+                isGrounded = false;
+                playJumpSound();
+            }
+            keys.jump = false;
+
+            // Constant gravity
+            player.vy = Math.min(player.vy + GRAVITY, MAX_FALL_SPEED);
+            player.y += player.vy;
+            resolveVerticalCollisions();
+
+            wrapPlayerPosition();
+        }
+
+        // Screen wrapping: crossing the left/right edge teleports to the opposite
+        // side; falling past the bottom edge teleports back up into the sky.
+        // (Only bottom-to-top wraps vertically - the top still has a solid ceiling.)
+        function wrapPlayerPosition() {
+            if (player.x > canvas.width) {
+                player.x = -PLAYER_W;
+            } else if (player.x + PLAYER_W < 0) {
+                player.x = canvas.width;
+            }
+
+            if (player.y > canvas.height) {
+                player.y = -PLAYER_H;
+                player.vy = 0;
+            }
         }
 
         function getCellFromEvent(e) {
@@ -570,18 +755,18 @@
             const scaleY = canvas.height / rect.height;
             const cx = (e.clientX - rect.left) * scaleX;
             const cy = (e.clientY - rect.top) * scaleY;
-            return { x: Math.floor(cx / gridSize), y: Math.floor(cy / gridSize) };
+            return { col: Math.floor(cx / gridSize), row: Math.floor(cy / gridSize) };
         }
 
         canvas.addEventListener('click', (e) => {
             const cell = getCellFromEvent(e);
-            tryMine(cell.x, cell.y);
+            tryMine(cell.col, cell.row);
         });
 
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             const cell = getCellFromEvent(e);
-            tryPlace(cell.x, cell.y);
+            tryFlag(cell.col, cell.row);
         });
 
         canvas.addEventListener('mousemove', (e) => {
@@ -597,149 +782,161 @@
             const t = e.changedTouches[0];
             const cell = getCellFromEvent(t);
             hoverCell = cell;
-            if (cell.y >= 0 && cell.y < tileCount && world[cell.y][cell.x] !== BLOCK.AIR) {
-                tryMine(cell.x, cell.y);
-            } else {
-                tryPlace(cell.x, cell.y);
-            }
+            if (flagMode) tryFlag(cell.col, cell.row);
+            else tryMine(cell.col, cell.row);
         }, { passive: false });
 
-        // Keyboard movement
+        // Keyboard: only horizontal movement + jump, no vertical/flying controls
         document.addEventListener('keydown', (e) => {
             switch (e.key.toLowerCase()) {
-                case 'arrowup':
-                case 'w':
-                    tryMove(0, -1);
-                    e.preventDefault();
-                    break;
-                case 'arrowdown':
-                case 's':
-                    tryMove(0, 1);
-                    e.preventDefault();
-                    break;
                 case 'arrowleft':
                 case 'a':
-                    tryMove(-1, 0);
+                    keys.left = true;
                     e.preventDefault();
                     break;
                 case 'arrowright':
                 case 'd':
-                    tryMove(1, 0);
+                    keys.right = true;
                     e.preventDefault();
                     break;
+                case 'arrowup':
+                case 'w':
                 case ' ':
-                    togglePause();
+                    keys.jump = true;
                     e.preventDefault();
+                    break;
+                case 'p':
+                    togglePause();
                     break;
             }
         });
 
-        // On-screen D-pad (touch devices)
-        document.querySelectorAll('.tc-btn').forEach((btn) => {
+        document.addEventListener('keyup', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'arrowleft':
+                case 'a':
+                    keys.left = false;
+                    break;
+                case 'arrowright':
+                case 'd':
+                    keys.right = false;
+                    break;
+            }
+        });
+
+        // On-screen touch controls (left/jump/right hold buttons)
+        document.querySelectorAll('.tc-btn[data-action]').forEach((btn) => {
+            const action = btn.dataset.action;
             btn.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
-                switch (btn.dataset.dir) {
-                    case 'up': tryMove(0, -1); break;
-                    case 'down': tryMove(0, 1); break;
-                    case 'left': tryMove(-1, 0); break;
-                    case 'right': tryMove(1, 0); break;
-                }
+                if (action === 'jump') keys.jump = true;
+                else keys[action] = true;
             });
+            const release = (e) => {
+                e.preventDefault();
+                if (action !== 'jump') keys[action] = false;
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
         });
 
-        function drawBlock(x, y, block) {
-            const px = x * gridSize, py = y * gridSize;
-            ctx.fillStyle = BLOCK_COLORS[block];
-            ctx.fillRect(px, py, gridSize, gridSize);
+        function hiddenCellColor(row) {
+            const depth = row - SKY_ROWS;
+            if (depth === 0) return '#8b5a2b';
+            return depth <= 3 ? '#7a4d24' : '#6e6e6e';
+        }
 
-            if (block === BLOCK.GRASS) {
-                ctx.fillStyle = '#7bd35a';
-                ctx.fillRect(px, py, gridSize, 5);
-            } else if (block === BLOCK.WOOD) {
-                ctx.fillStyle = '#6e4715';
-                ctx.fillRect(px + gridSize / 2 - 2, py, 4, gridSize);
-            } else if (block === BLOCK.LEAVES) {
-                ctx.fillStyle = 'rgba(0,0,0,0.15)';
-                ctx.fillRect(px + 4, py + 4, 4, 4);
-                ctx.fillRect(px + 15, py + 12, 4, 4);
-            } else if (block === BLOCK.STONE) {
-                ctx.fillStyle = 'rgba(255,255,255,0.08)';
-                ctx.fillRect(px + 3, py + 3, 6, 6);
-                ctx.fillRect(px + 15, py + 14, 5, 5);
+        function drawCell(col, row) {
+            const cell = grid[row][col];
+            if (cell.isSky) return;
+            const px = col * gridSize, py = row * gridSize;
+
+            if (cell.state === 'hidden') {
+                ctx.fillStyle = hiddenCellColor(row);
+                ctx.fillRect(px, py, gridSize, gridSize);
+                if (row - SKY_ROWS === 0) {
+                    ctx.fillStyle = '#5fae3f';
+                    ctx.fillRect(px, py, gridSize, 5);
+                }
+                ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(px + 0.5, py + 0.5, gridSize - 1, gridSize - 1);
+
+                if (cell.flagged) {
+                    ctx.fillStyle = '#3a3a3a';
+                    ctx.fillRect(px + gridSize / 2 - 1, py + 4, 2, 14);
+                    ctx.fillStyle = '#ff4040';
+                    ctx.beginPath();
+                    ctx.moveTo(px + gridSize / 2 + 1, py + 4);
+                    ctx.lineTo(px + gridSize / 2 + 10, py + 8);
+                    ctx.lineTo(px + gridSize / 2 + 1, py + 12);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            } else if (cell.isBomb) {
+                // Only ever drawn after a loss reveals the whole board
+                ctx.fillStyle = '#1a1a1a';
+                ctx.beginPath();
+                ctx.arc(px + gridSize / 2, py + gridSize / 2 + 2, gridSize / 2 - 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ff6b00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(px + gridSize / 2, py + gridSize / 2 - 4);
+                ctx.lineTo(px + gridSize / 2 + 5, py + 3);
+                ctx.stroke();
+            } else if (cell.count > 0) {
+                ctx.fillStyle = NUMBER_COLORS[cell.count] || '#222';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(cell.count, px + gridSize / 2, py + gridSize / 2 + 1);
             }
-
-            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(px + 0.5, py + 0.5, gridSize - 1, gridSize - 1);
         }
 
         function draw() {
-            // Sky
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
             sky.addColorStop(0, '#4fa8e0');
-            sky.addColorStop(1, '#bfe6ff');
+            sky.addColorStop(1, '#dff2ff');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            for (const c of clouds) {
-                ctx.beginPath();
-                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-                ctx.arc(c.x + c.r * 0.8, c.y + 3, c.r * 0.7, 0, Math.PI * 2);
-                ctx.arc(c.x - c.r * 0.8, c.y + 3, c.r * 0.7, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            for (let y = 0; y < tileCount; y++) {
-                for (let x = 0; x < tileCount; x++) {
-                    if (world[y][x] !== BLOCK.AIR) drawBlock(x, y, world[y][x]);
+            for (let row = SKY_ROWS; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    drawCell(col, row);
                 }
             }
 
             // Reachable range highlight
+            const pc = getPlayerCell();
             ctx.strokeStyle = 'rgba(255,255,255,0.55)';
             ctx.lineWidth = 2;
             ctx.strokeRect(
-                (player.x - 1) * gridSize + 1,
-                (player.y - 1) * gridSize + 1,
+                (pc.col - 1) * gridSize + 1,
+                (pc.row - 1) * gridSize + 1,
                 gridSize * 3 - 2,
                 gridSize * 3 - 2
             );
 
-            // Hovered cell outline (desktop)
-            if (hoverCell && hoverCell.x >= 0 && hoverCell.x < tileCount && hoverCell.y >= 0 && hoverCell.y < tileCount) {
+            if (hoverCell && hoverCell.col >= 0 && hoverCell.col < COLS && hoverCell.row >= 0 && hoverCell.row < ROWS) {
                 ctx.strokeStyle = '#ffd700';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(hoverCell.x * gridSize + 1, hoverCell.y * gridSize + 1, gridSize - 2, gridSize - 2);
+                ctx.strokeRect(hoverCell.col * gridSize + 1, hoverCell.row * gridSize + 1, gridSize - 2, gridSize - 2);
             }
 
             // Player (simple blockman)
-            const px = player.x * gridSize, py = player.y * gridSize;
             ctx.fillStyle = '#e8b98c';
-            ctx.fillRect(px + 7, py + 2, gridSize - 14, 8);
+            ctx.fillRect(player.x + 3, player.y, PLAYER_W - 6, 6);
             ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(px + 3, py + 10, gridSize - 6, 9);
+            ctx.fillRect(player.x, player.y + 6, PLAYER_W, 10);
             ctx.fillStyle = '#5b3a1f';
-            ctx.fillRect(px + 3, py + 19, gridSize - 6, 5);
+            ctx.fillRect(player.x, player.y + 16, PLAYER_W, 6);
 
-            // Particles
             for (const p of particles) {
-                ctx.globalAlpha = Math.max(0, p.life / 18);
+                ctx.globalAlpha = Math.max(0, p.life / 20);
                 ctx.fillStyle = p.color;
                 ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-            }
-            ctx.globalAlpha = 1;
-
-            // Floating texts
-            ctx.textAlign = 'center';
-            for (const ft of floatingTexts) {
-                ctx.globalAlpha = Math.max(0, ft.life / 40);
-                ctx.fillStyle = ft.color;
-                ctx.font = 'bold 13px Arial';
-                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-                ctx.lineWidth = 3;
-                ctx.strokeText(ft.text, ft.x, ft.y);
-                ctx.fillText(ft.text, ft.x, ft.y);
             }
             ctx.globalAlpha = 1;
 
@@ -754,13 +951,8 @@
         }
 
         function gameLoop() {
+            if (!gamePaused && gameRunning) update();
             if (!gamePaused) {
-                for (const c of clouds) {
-                    c.x += c.speed;
-                    if (c.x - c.r > canvas.width) c.x = -c.r;
-                }
-                for (const ft of floatingTexts) { ft.y -= 0.4; ft.life--; }
-                floatingTexts = floatingTexts.filter(ft => ft.life > 0);
                 for (const p of particles) { p.x += p.vx; p.y += p.vy; p.life--; }
                 particles = particles.filter(p => p.life > 0);
             }
@@ -768,7 +960,8 @@
             requestAnimationFrame(gameLoop);
         }
 
-        bestMined = parseInt(localStorage.getItem('minerBestMined')) || 0;
+        flagMode = false;
+        bestRevealed = parseInt(localStorage.getItem('minerBestRevealed')) || 0;
         resetGame();
         requestAnimationFrame(gameLoop);
     </script>
