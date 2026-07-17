@@ -309,7 +309,10 @@
         document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
 
         function ensureAudio() {
-            if (audioCtx) return;
+            if (audioCtx) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return;
+            }
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             masterGain = audioCtx.createGain();
             masterGain.gain.value = musicMuted ? 0 : 0.2;
@@ -380,12 +383,34 @@
             [392, 330, 262, 196].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.14, 0.18, 'sawtooth', 0.15));
         }
 
+        // Mobile browsers (iOS Safari especially) can leave the context suspended even
+        // after a gesture, and re-suspend it whenever the tab/screen is backgrounded, so
+        // this runs on every gesture (not just once) and re-resumes as needed.
+        let audioUnlockedOnce = false;
         function tryStartAudioOnGesture() {
             ensureAudio();
+            if (!audioUnlockedOnce) {
+                audioUnlockedOnce = true;
+                // A truly silent oscillator blip is the standard iOS unlock trick -
+                // resume() alone doesn't always fully wake the audio hardware.
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                g.gain.value = 0.0001;
+                osc.connect(g);
+                g.connect(masterGain);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.01);
+            }
             startMusicLoopIfNeeded();
         }
-        window.addEventListener('keydown', tryStartAudioOnGesture, { once: true });
-        window.addEventListener('pointerdown', tryStartAudioOnGesture, { once: true });
+        ['keydown', 'pointerdown', 'touchstart'].forEach((evt) => {
+            window.addEventListener(evt, tryStartAudioOnGesture, { passive: true });
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
 
         function initSnow() {
             snowflakes = [];
