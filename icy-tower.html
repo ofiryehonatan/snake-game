@@ -230,6 +230,7 @@
         <div class="button-group">
             <button id="pauseBtn" onclick="togglePause()">Pause</button>
             <button onclick="resetGame()">New Game</button>
+            <button id="muteBtn" onclick="toggleMute()">🔊</button>
         </div>
 
         <div class="controls">
@@ -290,6 +291,101 @@
         let player, floors, cameraY, keys, gameRunning, gamePaused;
         let heightScore, bonusScore, comboStreak, floatingTexts, snowflakes, floorsGenerated;
         let dangerY, timeCounter, particles, deathReason;
+
+        // ---- Audio: procedurally generated chiptune music + SFX (no audio files needed) ----
+        const NOTE_FREQ = {
+            'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'A#3': 233.08, 'C4': 261.63, 'D4': 293.66,
+            'E4': 329.63, 'F4': 349.23, 'A4': 440.00, 'C5': 523.25
+        };
+        const MUSIC_MELODY = ['A3', 'C4', 'E4', 'A4', 'E4', 'C4', null, null, 'F3', 'A3', 'C4', 'F4', 'C4', 'A3', null, null];
+        const MUSIC_STEP = 0.22;
+
+        let audioCtx = null;
+        let masterGain = null;
+        let musicMuted = localStorage.getItem('icyTowerMuted') === '1';
+        let musicLoopRunning = false;
+        let musicNextTime = 0;
+        let musicStep = 0;
+        document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+
+        function ensureAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = musicMuted ? 0 : 0.2;
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function playTone(freq, startTime, duration, type, peakGain) {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(0.0001, startTime);
+            g.gain.linearRampToValueAtTime(peakGain, startTime + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.02);
+        }
+
+        function musicScheduler() {
+            while (musicNextTime < audioCtx.currentTime + 0.1) {
+                const note = MUSIC_MELODY[musicStep % MUSIC_MELODY.length];
+                if (note) playTone(NOTE_FREQ[note], musicNextTime, MUSIC_STEP * 0.8, 'triangle', 0.13);
+                musicNextTime += MUSIC_STEP;
+                musicStep++;
+            }
+        }
+
+        function startMusicLoopIfNeeded() {
+            if (musicLoopRunning || musicMuted || !audioCtx) return;
+            musicLoopRunning = true;
+            musicNextTime = audioCtx.currentTime + 0.05;
+            setInterval(musicScheduler, 50);
+        }
+
+        function toggleMute() {
+            musicMuted = !musicMuted;
+            localStorage.setItem('icyTowerMuted', musicMuted ? '1' : '0');
+            ensureAudio();
+            if (masterGain) masterGain.gain.linearRampToValueAtTime(musicMuted ? 0 : 0.2, audioCtx.currentTime + 0.05);
+            document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+            if (!musicMuted) startMusicLoopIfNeeded();
+        }
+
+        function playJumpSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(520, audioCtx.currentTime + 0.12);
+            g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.13);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function playComboSound() {
+            if (!audioCtx) return;
+            [660, 880, 1100].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.05, 0.1, 'triangle', 0.15));
+        }
+
+        function playGameOverSound() {
+            if (!audioCtx) return;
+            [392, 330, 262, 196].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.14, 0.18, 'sawtooth', 0.15));
+        }
+
+        function tryStartAudioOnGesture() {
+            ensureAudio();
+            startMusicLoopIfNeeded();
+        }
+        window.addEventListener('keydown', tryStartAudioOnGesture, { once: true });
+        window.addEventListener('pointerdown', tryStartAudioOnGesture, { once: true });
 
         function initSnow() {
             snowflakes = [];
@@ -393,6 +489,7 @@
 
         function endGame() {
             gameRunning = false;
+            playGameOverSound();
             const finalScore = heightScore + bonusScore;
             if (finalScore > highScore) {
                 highScore = finalScore;
@@ -457,6 +554,7 @@
                 player.vy = JUMP_BASE + JUMP_BONUS * speedRatio;
                 player.vx *= 1.1;
                 player.onFloor = false;
+                playJumpSound();
             }
             keys['jump'] = false;
 
@@ -503,6 +601,7 @@
                                 const label = comboLabel(skipped);
                                 if (label) addFloatingText(label, player.x, player.y - 10, '#facc15');
                                 addFloatingText('+' + Math.round(bonus), player.x, player.y - 30, '#7dd3fc');
+                                playComboSound();
                             } else if (floor.index <= player.floorIndex) {
                                 // landed on a lower/same floor after falling back down
                                 comboStreak = 0;

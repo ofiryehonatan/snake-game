@@ -96,7 +96,7 @@
             flex-wrap: wrap;
         }
 
-        .score-box, .highscore-box {
+        .score-box, .highscore-box, .combo-box {
             background: rgba(255, 255, 255, 0.2);
             padding: 15px 30px;
             border-radius: 10px;
@@ -109,6 +109,12 @@
             font-weight: bold;
             font-size: 1.5em;
             color: #4fff4f;
+        }
+
+        .combo-box span {
+            font-weight: bold;
+            font-size: 1.5em;
+            color: #ffd700;
         }
 
         .controls {
@@ -199,18 +205,20 @@
         <div class="info">
             <div class="score-box">Score: <span id="score">0</span></div>
             <div class="highscore-box">High Score: <span id="highscore">0</span></div>
+            <div class="combo-box">Combo: <span id="combo">x0</span></div>
         </div>
 
         <div class="button-group">
             <button id="pauseBtn" onclick="togglePause()">Pause</button>
             <button onclick="resetGame()">New Game</button>
+            <button id="muteBtn" onclick="toggleMute()">🔊</button>
         </div>
 
         <div class="controls">
             <strong>Controls:</strong><br>
             Use Arrow Keys or WASD to move the snake (or swipe on the board)<br>
-            Space to pause/resume<br>
-            Eat the red food to grow and earn points
+            Space to pause/resume &nbsp;•&nbsp; Walls and grey rocks are now deadly &mdash; no more wraparound!<br>
+            <span style="color:#ffd700;">Gold food</span> is a timed bonus, <span style="color:#c084fc;">purple food</span> is poison &mdash; eat fast for combo bonuses!
         </div>
 
         <div class="touch-controls" id="touchControls">
@@ -229,7 +237,7 @@
 
     <div class="overlay" id="overlay"></div>
     <div class="game-over" id="gameOverModal">
-        <h2>GAME OVER!</h2>
+        <h2 id="gameOverTitle">GAME OVER!</h2>
         <p>Your Score: <span id="finalScore">0</span></p>
         <p>High Score: <span id="finalHighscore">0</span></p>
         <button onclick="resetGame()">Play Again</button>
@@ -242,8 +250,16 @@
         // Game variables
         const gridSize = 20;
         const tileCount = canvas.width / gridSize;
+        const MIN_SPEED = 45;
+        const SPEED_STEP = 1.5;
+        const COMBO_WINDOW = 3000; // ms between eats to keep the combo alive
+        const OBSTACLE_CAP = 14;
+        const OBSTACLE_SCORE_STEP = 40; // one more rock every N score
+
         let snake = [{ x: 10, y: 10 }];
         let food = { x: 15, y: 15 };
+        let extraFood = null; // { x, y, type: 'bonus' | 'poison', life, maxLife }
+        let obstacles = [];
         let direction = { x: 1, y: 0 };
         let nextDirection = { x: 1, y: 0 };
         let score = 0;
@@ -251,9 +267,106 @@
         let gameRunning = true;
         let gamePaused = false;
         let gameSpeed = 100;
+        let comboStreak = 0;
+        let lastEatTime = 0;
+        let floatingTexts = [];
+        let particles = [];
+        let deathReason = 'self';
 
         // Update high score display
         document.getElementById('highscore').textContent = highScore;
+
+        // ---- Audio: procedurally generated chiptune music + SFX (no audio files needed) ----
+        const NOTE_FREQ = {
+            'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
+            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+            'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'G5': 783.99, 'A5': 880.00
+        };
+        const MUSIC_MELODY = ['C4', 'E4', 'G4', 'C5', 'G4', 'E4', 'C4', null, 'D4', 'F4', 'A4', 'D5', 'A4', 'F4', 'D4', null];
+        const MUSIC_STEP = 0.15;
+
+        let audioCtx = null;
+        let masterGain = null;
+        let musicMuted = localStorage.getItem('snakeMuted') === '1';
+        let musicLoopRunning = false;
+        let musicNextTime = 0;
+        let musicStep = 0;
+        document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+
+        function ensureAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = musicMuted ? 0 : 0.22;
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function playTone(freq, startTime, duration, type, peakGain) {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(0.0001, startTime);
+            g.gain.linearRampToValueAtTime(peakGain, startTime + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.02);
+        }
+
+        function musicScheduler() {
+            while (musicNextTime < audioCtx.currentTime + 0.1) {
+                const note = MUSIC_MELODY[musicStep % MUSIC_MELODY.length];
+                if (note) playTone(NOTE_FREQ[note], musicNextTime, MUSIC_STEP * 0.85, 'square', 0.12);
+                musicNextTime += MUSIC_STEP;
+                musicStep++;
+            }
+        }
+
+        function startMusicLoopIfNeeded() {
+            if (musicLoopRunning || musicMuted || !audioCtx) return;
+            musicLoopRunning = true;
+            musicNextTime = audioCtx.currentTime + 0.05;
+            setInterval(musicScheduler, 50);
+        }
+
+        function toggleMute() {
+            musicMuted = !musicMuted;
+            localStorage.setItem('snakeMuted', musicMuted ? '1' : '0');
+            ensureAudio();
+            if (masterGain) masterGain.gain.linearRampToValueAtTime(musicMuted ? 0 : 0.22, audioCtx.currentTime + 0.05);
+            document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+            if (!musicMuted) startMusicLoopIfNeeded();
+        }
+
+        function playEatSound() {
+            if (!audioCtx) return;
+            playTone(880, audioCtx.currentTime, 0.09, 'square', 0.18);
+            playTone(1175, audioCtx.currentTime + 0.05, 0.09, 'square', 0.15);
+        }
+
+        function playBonusSound() {
+            if (!audioCtx) return;
+            [880, 1175, 1568].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.06, 0.12, 'triangle', 0.18));
+        }
+
+        function playPoisonSound() {
+            if (!audioCtx) return;
+            playTone(180, audioCtx.currentTime, 0.25, 'sawtooth', 0.15);
+        }
+
+        function playGameOverSound() {
+            if (!audioCtx) return;
+            [392, 330, 262, 196].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.14, 0.16, 'square', 0.18));
+        }
+
+        function tryStartAudioOnGesture() {
+            ensureAudio();
+            startMusicLoopIfNeeded();
+        }
+        window.addEventListener('keydown', tryStartAudioOnGesture, { once: true });
+        window.addEventListener('pointerdown', tryStartAudioOnGesture, { once: true });
 
         // Game loop
         let lastTime = 0;
@@ -262,7 +375,7 @@
 
             if (deltaTime > gameSpeed) {
                 if (!gamePaused && gameRunning) {
-                    update();
+                    update(currentTime);
                     draw();
                 }
                 lastTime = currentTime;
@@ -271,23 +384,40 @@
             requestAnimationFrame(gameLoop);
         }
 
-        function update() {
+        function update(currentTime) {
             // Update direction
             direction = nextDirection;
 
-            // Calculate new head position
+            // Calculate new head position (no wraparound - walls are deadly now)
             const head = snake[0];
             const newHead = {
-                x: (head.x + direction.x + tileCount) % tileCount,
-                y: (head.y + direction.y + tileCount) % tileCount
+                x: head.x + direction.x,
+                y: head.y + direction.y
             };
 
+            // Wall collision
+            if (newHead.x < 0 || newHead.x >= tileCount || newHead.y < 0 || newHead.y >= tileCount) {
+                deathReason = 'wall';
+                endGame();
+                return;
+            }
+
+            // Obstacle collision
+            if (obstacles.some(o => o.x === newHead.x && o.y === newHead.y)) {
+                deathReason = 'wall';
+                endGame();
+                return;
+            }
+
             const willEat = newHead.x === food.x && newHead.y === food.y;
+            const willEatExtra = extraFood && newHead.x === extraFood.x && newHead.y === extraFood.y;
 
             // Check collision with self (tail cell is vacated this frame unless growing)
-            const bodyToCheck = willEat ? snake : snake.slice(0, -1);
+            const growing = willEat || (willEatExtra && extraFood.type === 'bonus');
+            const bodyToCheck = growing ? snake : snake.slice(0, -1);
             for (let i = 0; i < bodyToCheck.length; i++) {
                 if (newHead.x === bodyToCheck[i].x && newHead.y === bodyToCheck[i].y) {
+                    deathReason = 'self';
                     endGame();
                     return;
                 }
@@ -296,18 +426,99 @@
             // Add new head
             snake.unshift(newHead);
 
-            // Check if food is eaten
             if (willEat) {
-                score += 10;
-                document.getElementById('score').textContent = score;
+                const inCombo = currentTime - lastEatTime < COMBO_WINDOW;
+                comboStreak = inCombo ? comboStreak + 1 : 1;
+                lastEatTime = currentTime;
+                const bonus = 10 + Math.max(0, comboStreak - 1) * 4;
+                score += bonus;
+                addFloatingText('+' + bonus, food.x, food.y, '#4fff4f');
+                const label = comboLabel(comboStreak);
+                if (label) addFloatingText(label, food.x, food.y - 1, '#ffd700');
+                addBurst(food.x, food.y, '#4fff4f');
+                playEatSound();
                 spawnFood();
-                // Increase difficulty
-                if (gameSpeed > 50) {
-                    gameSpeed -= 1;
+                spawnObstacles();
+                if (gameSpeed > MIN_SPEED) gameSpeed = Math.max(MIN_SPEED, gameSpeed - SPEED_STEP);
+                if (!extraFood && Math.random() < 0.35) spawnExtraFood();
+            } else if (willEatExtra) {
+                if (extraFood.type === 'bonus') {
+                    const bonus = 50 + comboStreak * 5;
+                    score += bonus;
+                    addFloatingText('+' + bonus, extraFood.x, extraFood.y, '#ffd700');
+                    addBurst(extraFood.x, extraFood.y, '#ffd700');
+                    playBonusSound();
+                    // growing === true for bonus, so no tail pop here
+                } else {
+                    score = Math.max(0, score - 15);
+                    comboStreak = 0;
+                    addFloatingText('-15', extraFood.x, extraFood.y, '#c084fc');
+                    addBurst(extraFood.x, extraFood.y, '#c084fc');
+                    playPoisonSound();
+                    // Net shrink by 3: the usual 1-segment tail removal plus a 3-segment penalty,
+                    // never dropping below a length-1 snake
+                    const targetLength = Math.max(1, snake.length - 1 - 3);
+                    while (snake.length > targetLength) snake.pop();
                 }
+                extraFood = null;
             } else {
-                // Remove tail if food not eaten
+                // Remove tail if nothing eaten
                 snake.pop();
+            }
+
+            document.getElementById('score').textContent = score;
+            document.getElementById('combo').textContent = 'x' + comboStreak;
+
+            // Extra food countdown
+            if (extraFood) {
+                extraFood.life--;
+                if (extraFood.life <= 0) extraFood = null;
+            }
+
+            // Combo expiry (no food eaten in time -> reset streak)
+            if (comboStreak > 0 && currentTime - lastEatTime > COMBO_WINDOW) {
+                comboStreak = 0;
+                document.getElementById('combo').textContent = 'x0';
+            }
+
+            // Update floating texts and particles
+            for (const ft of floatingTexts) { ft.y -= 0.4; ft.life--; }
+            floatingTexts = floatingTexts.filter(ft => ft.life > 0);
+            for (const p of particles) { p.x += p.vx; p.y += p.vy; p.life--; }
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        function comboLabel(streak) {
+            if (streak >= 6) return 'GODLIKE!';
+            if (streak >= 5) return 'AWESOME!';
+            if (streak >= 4) return 'SUPER!';
+            if (streak >= 3) return 'COOL!';
+            if (streak >= 2) return 'NICE!';
+            return '';
+        }
+
+        function addFloatingText(text, gridX, gridY, color) {
+            floatingTexts.push({
+                text,
+                x: gridX * gridSize + gridSize / 2,
+                y: gridY * gridSize + gridSize / 2,
+                life: 40,
+                color
+            });
+        }
+
+        function addBurst(gridX, gridY, color) {
+            const cx = gridX * gridSize + gridSize / 2;
+            const cy = gridY * gridSize + gridSize / 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI * 2 * i) / 8;
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * 1.8,
+                    vy: Math.sin(angle) * 1.8,
+                    life: 18,
+                    color
+                });
             }
         }
 
@@ -330,6 +541,15 @@
                 ctx.lineTo(canvas.width, i);
                 ctx.stroke();
             }
+
+            // Draw obstacles
+            ctx.fillStyle = '#5b5b6e';
+            ctx.shadowColor = '#8a8aa0';
+            ctx.shadowBlur = 6;
+            for (const o of obstacles) {
+                ctx.fillRect(o.x * gridSize + 1, o.y * gridSize + 1, gridSize - 2, gridSize - 2);
+            }
+            ctx.shadowBlur = 0;
 
             // Draw snake
             snake.forEach((segment, index) => {
@@ -366,32 +586,94 @@
             );
             ctx.fill();
             ctx.shadowBlur = 0;
+
+            // Draw extra food (bonus / poison)
+            if (extraFood) {
+                const isBonus = extraFood.type === 'bonus';
+                const cx = extraFood.x * gridSize + gridSize / 2;
+                const cy = extraFood.y * gridSize + gridSize / 2;
+                ctx.fillStyle = isBonus ? '#ffd700' : '#c084fc';
+                ctx.shadowColor = isBonus ? '#ffd700' : '#c084fc';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(cx, cy, gridSize / 2 - 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (isBonus) {
+                    // Countdown ring so the player knows the bonus is about to vanish
+                    ctx.strokeStyle = '#fff7cc';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, gridSize / 2 + 2, -Math.PI / 2, -Math.PI / 2 + (extraFood.life / extraFood.maxLife) * Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            // Particles
+            for (const p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life / 18);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+
+            // Floating score texts
+            ctx.textAlign = 'center';
+            for (const ft of floatingTexts) {
+                ctx.globalAlpha = Math.max(0, ft.life / 40);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText(ft.text, ft.x, ft.y);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function cellFree(x, y) {
+            if (snake.some(s => s.x === x && s.y === y)) return false;
+            if (obstacles.some(o => o.x === x && o.y === y)) return false;
+            if (extraFood && extraFood.x === x && extraFood.y === y) return false;
+            if (food && food.x === x && food.y === y) return false;
+            return true;
+        }
+
+        function randomFreeCell() {
+            let x, y, tries = 0;
+            do {
+                x = Math.floor(Math.random() * tileCount);
+                y = Math.floor(Math.random() * tileCount);
+                tries++;
+            } while (!cellFree(x, y) && tries < 500);
+            return { x, y };
         }
 
         function spawnFood() {
-            let newFood;
-            let foodOnSnake = true;
+            food = randomFreeCell();
+        }
 
-            while (foodOnSnake) {
-                newFood = {
-                    x: Math.floor(Math.random() * tileCount),
-                    y: Math.floor(Math.random() * tileCount)
-                };
+        function spawnExtraFood() {
+            const type = Math.random() < 0.55 ? 'bonus' : 'poison';
+            const pos = randomFreeCell();
+            const maxLife = 45;
+            extraFood = { x: pos.x, y: pos.y, type, life: maxLife, maxLife };
+        }
 
-                foodOnSnake = snake.some(segment =>
-                    segment.x === newFood.x && segment.y === newFood.y
-                );
+        function spawnObstacles() {
+            const target = Math.min(OBSTACLE_CAP, Math.floor(score / OBSTACLE_SCORE_STEP));
+            while (obstacles.length < target) {
+                obstacles.push(randomFreeCell());
             }
-
-            food = newFood;
         }
 
         function endGame() {
             gameRunning = false;
+            playGameOverSound();
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('snakeHighScore', highScore);
             }
+            const titles = { self: 'GAME OVER!', wall: '💥 SMASHED!' };
+            document.getElementById('gameOverTitle').textContent = titles[deathReason] || titles.self;
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalHighscore').textContent = highScore;
             document.getElementById('overlay').style.display = 'block';
@@ -401,13 +683,21 @@
         function resetGame() {
             snake = [{ x: 10, y: 10 }];
             food = { x: 15, y: 15 };
+            extraFood = null;
+            obstacles = [];
             direction = { x: 1, y: 0 };
             nextDirection = { x: 1, y: 0 };
             score = 0;
             gameSpeed = 100;
             gameRunning = true;
             gamePaused = false;
+            comboStreak = 0;
+            lastEatTime = 0;
+            floatingTexts = [];
+            particles = [];
+            deathReason = 'self';
             document.getElementById('score').textContent = 0;
+            document.getElementById('combo').textContent = 'x0';
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('gameOverModal').style.display = 'none';
             document.getElementById('pauseBtn').textContent = 'Pause';
