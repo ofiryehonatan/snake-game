@@ -179,15 +179,17 @@
         <div class="controls">
             <strong>Controls:</strong><br>
             Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
-            Build up running speed before you jump to leap higher and skip floors for combo bonuses!
+            Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
+            <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
+            <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
         </div>
 
-        <a class="home-link" href="index.html">&larr; Back to Snake Game</a>
+        <a class="home-link" href="index.html">&larr; Back to Menu</a>
     </div>
 
     <div class="overlay" id="overlay"></div>
     <div class="game-over" id="gameOverModal">
-        <h2>YOU FELL!</h2>
+        <h2 id="gameOverTitle">YOU FELL!</h2>
         <p>Your Score: <span id="finalScore">0</span></p>
         <p>Best Score: <span id="finalHighscore">0</span></p>
         <button onclick="resetGame()">Play Again</button>
@@ -210,11 +212,21 @@
         const PLAYER_W = 26;
         const PLAYER_H = 34;
 
+        // ---- Danger line (rising ice that chases the player) ----
+        const DANGER_START_GAP = 260;
+        const DANGER_BASE_SPEED = 0.5;
+        const DANGER_SPEED_PER_SCORE = 0.0009;
+        const DANGER_MAX_SPEED = 3.2;
+
+        // ---- Hazard floor tuning ----
+        const CRUMBLE_TIME = 40; // frames until a cracked floor gives way
+
         let highScore = parseInt(localStorage.getItem('icyTowerHighScore')) || 0;
         document.getElementById('highscore').textContent = highScore;
 
         let player, floors, cameraY, keys, gameRunning, gamePaused;
         let heightScore, bonusScore, comboStreak, floatingTexts, snowflakes, floorsGenerated;
+        let dangerY, timeCounter, particles, deathReason;
 
         function initSnow() {
             snowflakes = [];
@@ -239,7 +251,7 @@
                 facing: 1
             };
 
-            floors = [{ x: 0, y: GROUND_Y, width: W, index: 0 }];
+            floors = [{ x: 0, y: GROUND_Y, width: W, index: 0, type: 'normal', baseX: 0, moveAmp: 0, moveSpeed: 0, movePhase: 0, crumbleTimer: null, broken: false }];
             floorsGenerated = 0;
             generateFloors();
 
@@ -251,6 +263,10 @@
             bonusScore = 0;
             comboStreak = 0;
             floatingTexts = [];
+            particles = [];
+            timeCounter = 0;
+            dangerY = GROUND_Y + DANGER_START_GAP;
+            deathReason = 'fall';
             initSnow();
 
             document.getElementById('score').textContent = '0';
@@ -263,14 +279,35 @@
         function generateFloors() {
             let last = floors[floors.length - 1];
             while (last.y > cameraYTopBound() - 200) {
-                const gap = Math.min(60 + floorsGenerated * 0.5, 135);
-                const width = Math.max(210 - floorsGenerated * 0.9, 85);
+                const gap = Math.min(60 + floorsGenerated * 0.6, 165);
+                const width = Math.max(200 - floorsGenerated * 1.1, 60);
                 const maxReach = 170;
                 const prevCenter = last.x + last.width / 2;
                 let x = prevCenter + (Math.random() * 2 - 1) * maxReach - width / 2;
                 x = Math.max(0, Math.min(W - width, x));
                 floorsGenerated++;
-                const floor = { x, y: last.y - gap, width, index: floorsGenerated };
+
+                let type = 'normal';
+                if (floorsGenerated > 6) {
+                    const r = Math.random();
+                    if (floorsGenerated > 14 && last.type !== 'trap' && r < 0.12) {
+                        type = 'trap';
+                    } else if (r < 0.28) {
+                        type = 'crumble';
+                    } else if (r < 0.42) {
+                        type = 'moving';
+                    }
+                }
+
+                const floor = {
+                    x, y: last.y - gap, width, index: floorsGenerated, type,
+                    baseX: x,
+                    moveAmp: type === 'moving' ? (30 + Math.random() * 40) : 0,
+                    moveSpeed: type === 'moving' ? (0.01 + Math.random() * 0.015) : 0,
+                    movePhase: Math.random() * Math.PI * 2,
+                    crumbleTimer: null,
+                    broken: false
+                };
                 floors.push(floor);
                 last = floor;
             }
@@ -298,6 +335,8 @@
                 highScore = finalScore;
                 localStorage.setItem('icyTowerHighScore', highScore);
             }
+            const titles = { trap: '💀 SPIKED!', danger: '🥶 FROZEN SOLID!', fall: '❄️ YOU FELL!' };
+            document.getElementById('gameOverTitle').textContent = titles[deathReason] || titles.fall;
             document.getElementById('finalScore').textContent = finalScore;
             document.getElementById('finalHighscore').textContent = highScore;
             document.getElementById('overlay').style.display = 'block';
@@ -318,6 +357,24 @@
         }
 
         function update() {
+            timeCounter++;
+
+            // Drift moving floors
+            for (const floor of floors) {
+                if (floor.type === 'moving' && !floor.broken) {
+                    floor.x = Math.max(0, Math.min(W - floor.width,
+                        floor.baseX + Math.sin(timeCounter * floor.moveSpeed + floor.movePhase) * floor.moveAmp));
+                }
+            }
+
+            // Tick down crumbling floors
+            for (const floor of floors) {
+                if (floor.crumbleTimer !== null && !floor.broken) {
+                    floor.crumbleTimer--;
+                    if (floor.crumbleTimer <= 0) floor.broken = true;
+                }
+            }
+
             // Horizontal movement
             if (keys['left']) {
                 player.vx -= RUN_ACCEL;
@@ -355,14 +412,26 @@
             if (player.vy >= 0) {
                 const newBottom = player.y + PLAYER_H;
                 for (const floor of floors) {
+                    if (floor.broken) continue;
                     const overlapsX = player.x + PLAYER_W > floor.x && player.x < floor.x + floor.width;
                     if (overlapsX && prevBottom <= floor.y && newBottom >= floor.y) {
+                        if (floor.type === 'trap') {
+                            player.y = floor.y - PLAYER_H;
+                            deathReason = 'trap';
+                            endGame();
+                            return;
+                        }
+
                         player.y = floor.y - PLAYER_H;
                         player.vy = 0;
                         const wasOnFloor = player.onFloor;
                         player.onFloor = true;
 
                         if (!wasOnFloor) {
+                            addLandingParticles(player.x, floor.y);
+                            if (floor.type === 'crumble' && floor.crumbleTimer === null) {
+                                floor.crumbleTimer = CRUMBLE_TIME;
+                            }
                             const skipped = floor.index - player.floorIndex - 1;
                             if (skipped > 0 && floor.index > player.floorIndex) {
                                 comboStreak++;
@@ -384,9 +453,11 @@
                         break;
                     }
                 }
-                if (player.y + PLAYER_H < floors.find(f => f.index === player.floorIndex).y - 1 ||
-                    player.x + PLAYER_W < floors.find(f => f.index === player.floorIndex).x ||
-                    player.x > floors.find(f => f.index === player.floorIndex).x + floors.find(f => f.index === player.floorIndex).width) {
+                const curFloor = floors.find(f => f.index === player.floorIndex);
+                if (!curFloor || curFloor.broken ||
+                    player.y + PLAYER_H < curFloor.y - 1 ||
+                    player.x + PLAYER_W < curFloor.x ||
+                    player.x > curFloor.x + curFloor.width) {
                     player.onFloor = false;
                 }
             } else {
@@ -413,15 +484,47 @@
             }
             floatingTexts = floatingTexts.filter(ft => ft.life > 0);
 
+            // Update particles
+            for (const p of particles) {
+                p.vy += 0.15;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+            }
+            particles = particles.filter(p => p.life > 0);
+
             // Snow drift
             for (const flake of snowflakes) {
                 flake.y += flake.speed;
                 if (flake.y > H) { flake.y = 0; flake.x = Math.random() * W; }
             }
 
+            // Rising ice: the danger line chases upward, faster the higher you've climbed
+            const dangerSpeed = Math.min(DANGER_MAX_SPEED, DANGER_BASE_SPEED + heightScore * DANGER_SPEED_PER_SCORE);
+            dangerY -= dangerSpeed;
+            if (player.y + PLAYER_H > dangerY) {
+                deathReason = 'danger';
+                endGame();
+                return;
+            }
+
             // Death: fell below the visible screen
             if (player.y - cameraY > H + PLAYER_H) {
+                deathReason = 'fall';
                 endGame();
+            }
+        }
+
+        function addLandingParticles(x, y) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x + PLAYER_W / 2,
+                    y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 2,
+                    life: 20,
+                    color: '#bae6fd'
+                });
             }
         }
 
@@ -444,15 +547,74 @@
 
             // Floors
             for (const floor of floors) {
+                if (floor.broken) continue;
                 const sy = floor.y - cameraY;
                 if (sy < -20 || sy > H + 20) continue;
-                ctx.fillStyle = '#e0f2fe';
+
+                let jitter = 0;
+                if (floor.crumbleTimer !== null) {
+                    const t = 1 - floor.crumbleTimer / CRUMBLE_TIME;
+                    jitter = (Math.random() - 0.5) * 4 * t;
+                }
+
+                if (floor.type === 'trap') {
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.shadowColor = '#ef4444';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(floor.x + jitter, sy, floor.width, 12);
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#ef4444';
+                    const spikeCount = Math.max(2, Math.floor(floor.width / 18));
+                    const spikeW = floor.width / spikeCount;
+                    for (let i = 0; i < spikeCount; i++) {
+                        const sx = floor.x + jitter + i * spikeW;
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(sx + spikeW / 2, sy - 8);
+                        ctx.lineTo(sx + spikeW, sy);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                } else {
+                    let topColor = '#e0f2fe', edgeColor = '#93c5fd', glow = '#7dd3fc';
+                    if (floor.type === 'moving') {
+                        topColor = '#a7f3d0'; edgeColor = '#34d399'; glow = '#34d399';
+                    } else if (floor.type === 'crumble') {
+                        const t = floor.crumbleTimer !== null ? 1 - floor.crumbleTimer / CRUMBLE_TIME : 0;
+                        topColor = mixColor('#e0f2fe', '#f87171', t);
+                        edgeColor = mixColor('#93c5fd', '#ef4444', t);
+                        glow = edgeColor;
+                    }
+                    ctx.fillStyle = topColor;
+                    ctx.shadowColor = glow;
+                    ctx.shadowBlur = 8;
+                    ctx.fillRect(floor.x + jitter, sy, floor.width, 12);
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = edgeColor;
+                    ctx.fillRect(floor.x + jitter, sy + 9, floor.width, 3);
+                }
+            }
+
+            // Rising danger ice
+            const dangerScreenY = dangerY - cameraY;
+            if (dangerScreenY < H) {
+                const top = Math.max(0, dangerScreenY);
+                const grad = ctx.createLinearGradient(0, top, 0, H);
+                grad.addColorStop(0, 'rgba(125, 211, 252, 0.85)');
+                grad.addColorStop(0.2, 'rgba(15, 23, 42, 0.95)');
+                grad.addColorStop(1, 'rgba(2, 6, 23, 1)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, top, W, H - top);
+
+                ctx.strokeStyle = '#7dd3fc';
+                ctx.lineWidth = 3;
                 ctx.shadowColor = '#7dd3fc';
-                ctx.shadowBlur = 8;
-                ctx.fillRect(floor.x, sy, floor.width, 12);
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(0, dangerScreenY);
+                ctx.lineTo(W, dangerScreenY);
+                ctx.stroke();
                 ctx.shadowBlur = 0;
-                ctx.fillStyle = '#93c5fd';
-                ctx.fillRect(floor.x, sy + 9, floor.width, 3);
             }
 
             // Player
@@ -469,6 +631,14 @@
             ctx.beginPath();
             ctx.arc(player.x + PLAYER_W / 2 + eyeOffset / 2, sy + 12, 2.5, 0, Math.PI * 2);
             ctx.fill();
+
+            // Landing particles
+            for (const p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life / 20);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 1, p.y - cameraY - 1, 3, 3);
+            }
+            ctx.globalAlpha = 1;
 
             // Floating combo texts
             ctx.textAlign = 'center';
