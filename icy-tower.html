@@ -53,9 +53,10 @@
 
         .touch-controls {
             display: none;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             margin-top: 20px;
             user-select: none;
         }
@@ -67,9 +68,6 @@
         }
 
         .tc-btn {
-            width: 64px;
-            height: 64px;
-            font-size: 1.5em;
             background: rgba(255, 255, 255, 0.2);
             border: 2px solid white;
             border-radius: 12px;
@@ -83,10 +81,25 @@
         }
 
         .tc-jump {
-            width: 84px;
-            height: 64px;
-            font-size: 1.1em;
+            width: 140px;
+            height: 96px;
+            font-size: 1.3em;
             font-weight: bold;
+        }
+
+        .tc-tilt-enable {
+            width: 200px;
+            height: 56px;
+            font-size: 1em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .tilt-status {
+            color: #cfe8ff;
+            font-size: 0.8em;
+            opacity: 0.85;
+            display: none;
         }
 
         .info {
@@ -222,15 +235,16 @@
         <div class="controls">
             <strong>Controls:</strong><br>
             Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
+            On phone: tilt left/right to run, tap JUMP to jump<br>
             Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
             <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
             <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
         </div>
 
         <div class="touch-controls" id="touchControls">
-            <button class="tc-btn" data-action="left">&#9664;</button>
+            <button class="tc-btn tc-tilt-enable" id="tiltEnableBtn">Enable Tilt Controls</button>
             <button class="tc-btn tc-jump" data-action="jump">JUMP</button>
-            <button class="tc-btn" data-action="right">&#9654;</button>
+            <div class="tilt-status" id="tiltStatus">Tilt your phone left/right to move &bull; tap JUMP to jump</div>
         </div>
 
         <a class="home-link" href="index.html">&larr; Back to Menu</a>
@@ -760,22 +774,51 @@
             }
         });
 
-        // On-screen touch controls
-        document.querySelectorAll('.tc-btn').forEach((btn) => {
-            const action = btn.dataset.action;
+        // On-screen jump button (touch devices)
+        document.querySelectorAll('.tc-btn[data-action="jump"]').forEach((btn) => {
             btn.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
-                if (action === 'jump') keys['jump'] = true;
-                else keys[action] = true;
+                keys['jump'] = true;
             });
-            const release = (e) => {
-                e.preventDefault();
-                if (action !== 'jump') keys[action] = false;
-            };
-            btn.addEventListener('pointerup', release);
-            btn.addEventListener('pointerleave', release);
-            btn.addEventListener('pointercancel', release);
         });
+
+        // Tilt controls: phone gamma (left/right tilt) drives running
+        const TILT_DEADZONE = 6;
+        function handleTilt(e) {
+            const gamma = e.gamma;
+            if (gamma === null) return;
+            if (gamma > TILT_DEADZONE) {
+                keys['right'] = true;
+                keys['left'] = false;
+            } else if (gamma < -TILT_DEADZONE) {
+                keys['left'] = true;
+                keys['right'] = false;
+            } else {
+                keys['left'] = false;
+                keys['right'] = false;
+            }
+        }
+
+        function startTilt() {
+            window.addEventListener('deviceorientation', handleTilt);
+            document.getElementById('tiltStatus').style.display = 'block';
+        }
+
+        const tiltEnableBtn = document.getElementById('tiltEnableBtn');
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // iOS 13+ requires an explicit user gesture to grant motion access
+            tiltEnableBtn.style.display = 'inline-block';
+            tiltEnableBtn.addEventListener('click', () => {
+                DeviceOrientationEvent.requestPermission().then((state) => {
+                    if (state === 'granted') {
+                        startTilt();
+                        tiltEnableBtn.style.display = 'none';
+                    }
+                }).catch(() => {});
+            });
+        } else if (window.DeviceOrientationEvent) {
+            startTilt();
+        }
 
         resetGame();
         requestAnimationFrame(gameLoop);
