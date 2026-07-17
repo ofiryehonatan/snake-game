@@ -410,11 +410,12 @@
                 facing: 1
             };
 
+            cameraY = GROUND_Y - H + 60;
+
             floors = [{ x: 0, y: GROUND_Y, width: W, index: 0, type: 'normal', baseX: 0, moveAmp: 0, moveSpeed: 0, movePhase: 0, crumbleTimer: null, broken: false }];
             floorsGenerated = 0;
             generateFloors();
 
-            cameraY = GROUND_Y - H + 60;
             keys = {};
             gameRunning = true;
             gamePaused = false;
