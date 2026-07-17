@@ -29,6 +29,8 @@
             border-radius: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(10px);
+            max-width: 440px;
+            width: 92vw;
         }
 
         h1 {
@@ -45,6 +47,45 @@
             margin: 20px auto;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
+            height: auto;
+            touch-action: none;
+        }
+
+        .touch-controls {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            user-select: none;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .touch-controls {
+                display: flex;
+            }
+        }
+
+        .tc-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tc-btn {
+            width: 58px;
+            height: 58px;
+            font-size: 1.4em;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 10px;
+            color: white;
+            touch-action: none;
+            padding: 0;
+        }
+
+        .tc-btn:active {
+            background: rgba(255, 255, 255, 0.45);
         }
 
         .info {
@@ -167,9 +208,20 @@
 
         <div class="controls">
             <strong>Controls:</strong><br>
-            Use Arrow Keys or WASD to move the snake<br>
+            Use Arrow Keys or WASD to move the snake (or swipe on the board)<br>
             Space to pause/resume<br>
             Eat the red food to grow and earn points
+        </div>
+
+        <div class="touch-controls" id="touchControls">
+            <div class="tc-row">
+                <button class="tc-btn" data-dir="up">&#9650;</button>
+            </div>
+            <div class="tc-row">
+                <button class="tc-btn" data-dir="left">&#9664;</button>
+                <button class="tc-btn" data-dir="down">&#9660;</button>
+                <button class="tc-btn" data-dir="right">&#9654;</button>
+            </div>
         </div>
 
         <a href="index.html" style="display:block;color:white;margin-top:14px;font-size:0.85em;text-decoration:none;">&larr; Back to Menu</a>
@@ -368,36 +420,37 @@
             }
         }
 
+        // Shared direction setter used by keyboard, on-screen D-pad and swipes
+        function setDirection(dx, dy) {
+            if (dx !== 0) {
+                if (nextDirection.x === 0) nextDirection = { x: dx, y: 0 };
+            } else if (dy !== 0) {
+                if (nextDirection.y === 0) nextDirection = { x: 0, y: dy };
+            }
+        }
+
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             switch (e.key.toLowerCase()) {
                 case 'arrowup':
                 case 'w':
-                    if (nextDirection.y === 0) {
-                        nextDirection = { x: 0, y: -1 };
-                        e.preventDefault();
-                    }
+                    setDirection(0, -1);
+                    e.preventDefault();
                     break;
                 case 'arrowdown':
                 case 's':
-                    if (nextDirection.y === 0) {
-                        nextDirection = { x: 0, y: 1 };
-                        e.preventDefault();
-                    }
+                    setDirection(0, 1);
+                    e.preventDefault();
                     break;
                 case 'arrowleft':
                 case 'a':
-                    if (nextDirection.x === 0) {
-                        nextDirection = { x: -1, y: 0 };
-                        e.preventDefault();
-                    }
+                    setDirection(-1, 0);
+                    e.preventDefault();
                     break;
                 case 'arrowright':
                 case 'd':
-                    if (nextDirection.x === 0) {
-                        nextDirection = { x: 1, y: 0 };
-                        e.preventDefault();
-                    }
+                    setDirection(1, 0);
+                    e.preventDefault();
                     break;
                 case ' ':
                     togglePause();
@@ -405,6 +458,41 @@
                     break;
             }
         });
+
+        // On-screen D-pad (touch devices)
+        document.querySelectorAll('.tc-btn').forEach((btn) => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                switch (btn.dataset.dir) {
+                    case 'up': setDirection(0, -1); break;
+                    case 'down': setDirection(0, 1); break;
+                    case 'left': setDirection(-1, 0); break;
+                    case 'right': setDirection(1, 0); break;
+                }
+            });
+        });
+
+        // Swipe controls on the board itself
+        let touchStartX = 0, touchStartY = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            const t = e.changedTouches[0];
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            const t = e.changedTouches[0];
+            const dx = t.clientX - touchStartX;
+            const dy = t.clientY - touchStartY;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                setDirection(dx > 0 ? 1 : -1, 0);
+            } else {
+                setDirection(0, dy > 0 ? 1 : -1);
+            }
+            e.preventDefault();
+        }, { passive: false });
 
         // Start game loop
         requestAnimationFrame(gameLoop);
