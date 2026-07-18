@@ -34,6 +34,15 @@
             height: 100vh;
             max-width: 100vw;
             max-height: 100vh;
+            /* dvh/dvw track the mobile browser's *actual* visible viewport
+               as its address bar/toolbar show or hide, instead of vh/vw's
+               fixed "largest possible" viewport - browsers that don't
+               support the unit ignore the whole declaration and keep the
+               vh/vw value above. */
+            width: 100dvw;
+            height: 100dvh;
+            max-width: 100dvw;
+            max-height: 100dvh;
             object-fit: contain;
             background-color: #74c0f0;
             touch-action: none;
@@ -151,6 +160,28 @@
         @media (hover: none) and (pointer: coarse) {
             .mobile-controls {
                 display: flex;
+            }
+
+            /* The generic button{} padding (12px 30px) fights the small
+               explicit width/height here - when padding exceeds the
+               specified size, Chromium expands the box to fit the padding
+               instead of honoring the smaller width, silently blowing past
+               the intended compact size. Resetting padding restores it,
+               and the size is pinned to comfortably clear the 44x44px
+               minimum touch target on mobile. */
+            .menu-btn {
+                width: 46px;
+                height: 46px;
+                padding: 0;
+            }
+
+            .menu-close {
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
         }
 
