@@ -1,9 +1,9 @@
 {
-  "name": "Snake Game",
-  "short_name": "Snake",
+  "name": "Ofircade",
+  "short_name": "Ofircade",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#667eea",
-  "description": "A simple Snake game built with HTML, CSS, and JavaScript"
+  "description": "A small arcade of browser games: Snake, Icy Tower, Block Miner, and Stack Climber"
 }

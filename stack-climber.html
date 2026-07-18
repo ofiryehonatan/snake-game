@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2d1b4e">
+    <link rel="manifest" href="manifest.json">
+    <title>Stack Climber - Ofir Yehonatan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 100%);
+            font-family: 'Arial', sans-serif;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            max-width: 460px;
+            width: 92vw;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 5px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .board-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        #gameCanvas {
+            border: 3px solid white;
+            background-color: #12121f;
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            max-width: 78%;
+            max-height: 55vh;
+            height: auto;
+            object-fit: contain;
+            touch-action: none;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #nextCanvas {
+            border: 2px solid white;
+            background-color: #12121f;
+            border-radius: 8px;
+            width: 60px;
+            height: 60px;
+        }
+
+        .next-label {
+            color: white;
+            font-size: 0.8em;
+            opacity: 0.85;
+        }
+
+        .info {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .score-box, .lines-box, .level-box, .best-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 16px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95em;
+            border: 2px solid white;
+        }
+
+        .score-box span, .lines-box span, .level-box span, .best-box span {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #9be564;
+        }
+
+        .controls {
+            color: white;
+            margin-top: 16px;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        /* ==== Unified mobile control bar (shared layout/classes across all games) ==== */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+            /* Anchor to the top instead of vertically centering - otherwise a short
+               page can float mid-viewport and the fixed bottom bar (docked to the
+               viewport, not the container) can overlap it regardless of padding. */
+            body {
+                align-items: flex-start;
+            }
+            .container {
+                padding-bottom: 260px;
+            }
+            /* The keyboard instructions are redundant once labeled touch buttons
+               are visible, and this game already needs more scroll room than most. */
+            .controls {
+                display: none;
+            }
+        }
+
+        .mc-dpad {
+            display: grid;
+            grid-template-columns: 58px 58px 58px;
+            grid-template-rows: 58px 58px 58px;
+            grid-template-areas:
+                ".    up    ."
+                "left .     right"
+                ".    down  .";
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .mc-dpad-up { grid-area: up; }
+        .mc-dpad-down { grid-area: down; }
+        .mc-dpad-left { grid-area: left; }
+        .mc-dpad-right { grid-area: right; }
+
+        .mc-hide-vertical .mc-dpad-up,
+        .mc-hide-vertical .mc-dpad-down {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .mc-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 14px;
+            color: white;
+            font-size: 1.6em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            padding: 0;
+        }
+
+        .mc-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .mc-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-action-main {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .mc-secondary-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .mc-secondary {
+            min-width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 0 10px;
+        }
+
+        .mc-secondary.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
+        .mc-nav-alt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+            max-width: 150px;
+        }
+
+        .mc-nav-alt .mc-secondary {
+            width: 100%;
+        }
+
+        .mc-tilt-status {
+            color: #cfe8ff;
+            font-size: 0.7em;
+            text-align: center;
+            line-height: 1.3;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 8px;
+            border-radius: 8px;
+        }
+
+        .difficulty-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .diff-label {
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.85;
+        }
+
+        .diff-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .diff-btn.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
+        .level-select {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .level-select option {
+            color: black;
+        }
+
+        .tc-group-label {
+            color: #ffd700;
+            font-size: 0.7em;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #6a3de8 0%, #3d1f8c 100%);
+            color: white;
+            border: 2px solid white;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #9be564;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            max-width: 90vw;
+        }
+
+        .game-over h2 {
+            color: #9be564;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            color: white;
+            font-size: 1.05em;
+            margin-bottom: 10px;
+        }
+
+        .game-over button {
+            margin-top: 20px;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .home-link {
+            display: block;
+            color: white;
+            margin-top: 14px;
+            font-size: 0.85em;
+            text-decoration: none;
+        }
+
+        .home-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧗 STACK CLIMBER</h1>
+        <div style="color:white;margin-bottom:10px;font-size:0.9em;opacity:0.85;">by Ofir Yehonatan</div>
+
+        <div class="controls">
+            <strong>Controls:</strong><br>
+            <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
+            <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
+            Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
+        </div>
+
+        <div class="board-row">
+            <canvas id="gameCanvas" width="300" height="600"></canvas>
+            <div class="side-panel">
+                <div class="next-label">NEXT</div>
+                <canvas id="nextCanvas" width="80" height="80"></canvas>
+            </div>
+        </div>
+
+        <div class="info">
+            <div class="score-box">Score: <span id="score">0</span></div>
+            <div class="lines-box">Lines: <span id="lines">0</span></div>
+            <div class="level-box">Level: <span id="level">1</span></div>
+            <div class="best-box">Best: <span id="best">0</span></div>
+        </div>
+
+        <div class="difficulty-row" id="difficultyRow">
+            <span class="diff-label">Difficulty:</span>
+            <button class="diff-btn" data-diff="easy" onclick="selectDifficulty('easy')">Easy</button>
+            <button class="diff-btn" data-diff="medium" onclick="selectDifficulty('medium')">Medium</button>
+            <button class="diff-btn" data-diff="hard" onclick="selectDifficulty('hard')">Hard</button>
+        </div>
+
+        <div class="difficulty-row">
+            <span class="diff-label">Start Level:</span>
+            <select id="startLevelSelect" class="level-select" onchange="setStartLevel(this.value)"></select>
+        </div>
+
+        <div class="button-group">
+            <button id="pauseBtn" onclick="togglePause()">Pause</button>
+            <button onclick="resetGame()">New Game</button>
+            <button id="muteBtn" onclick="toggleMute()">🔊</button>
+        </div>
+
+        <a href="index.html" class="home-link">&larr; Back to Menu</a>
+    </div>
+
+    <div class="mobile-controls" id="mobileControls">
+        <div class="mc-dpad mc-hide-vertical">
+            <button class="mc-btn mc-dpad-up" data-char="up">&#9650;</button>
+            <button class="mc-btn mc-dpad-left" data-char="left">&#9664;</button>
+            <button class="mc-btn mc-dpad-right" data-char="right">&#9654;</button>
+            <button class="mc-btn mc-dpad-down" data-char="down">&#9660;</button>
+        </div>
+        <div class="mc-actions">
+            <div class="tc-group-label">PIECE</div>
+            <div class="mc-secondary-row">
+                <button class="mc-btn mc-secondary" data-piece="left">&#9664;</button>
+                <button class="mc-btn mc-secondary" data-piece="rotate">&#8635;</button>
+                <button class="mc-btn mc-secondary" data-piece="right">&#9654;</button>
+            </div>
+            <button class="mc-btn mc-secondary" data-piece="drop" style="width:100%;">HARD DROP</button>
+            <button class="mc-btn mc-action-main" data-char="jump">JUMP</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="game-over" id="gameOverModal">
+        <h2 id="gameOverTitle">GAME OVER</h2>
+        <p id="gameOverMessage"></p>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        // ---- Board constants ----
+        const gridSize = 30;
+        const COLS = canvas.width / gridSize;   // 10
+        const ROWS = canvas.height / gridSize;  // 20
+
+        // ---- Character physics constants (same recipe as Block Miner) ----
+        const GRAVITY = 0.5;
+        const MOVE_SPEED = 2.5;
+        const JUMP_VELOCITY = -8;
+        const MAX_FALL_SPEED = 10;
+        const PLAYER_W = 18;
+        const PLAYER_H = 26;
+
+        const SOFT_DROP_INTERVAL = 45;
+
+        const PIECES = {
+            I: { matrix: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], color: '#4fd8e0' },
+            O: { matrix: [[1, 1], [1, 1]], color: '#f7d716' },
+            T: { matrix: [[0, 1, 0], [1, 1, 1], [0, 0, 0]], color: '#a259e6' },
+            S: { matrix: [[0, 1, 1], [1, 1, 0], [0, 0, 0]], color: '#5fae3f' },
+            Z: { matrix: [[1, 1, 0], [0, 1, 1], [0, 0, 0]], color: '#ff6b6b' },
+            J: { matrix: [[1, 0, 0], [1, 1, 1], [0, 0, 0]], color: '#4f7fe0' },
+            L: { matrix: [[0, 0, 1], [1, 1, 1], [0, 0, 0]], color: '#f0932b' }
+        };
+
+        let board, currentPiece, nextPieceType, bag;
+        let score, linesCleared, level, dropInterval, bestScore;
+        let player, keys, isGrounded, softDropActive;
+        let gameRunning, gamePaused, deathReason, particles, floatingTexts;
+        let lastDropTime;
+
+        // ---- Difficulty: controls starting drop speed and how fast it ramps up ----
+        const DIFFICULTIES = {
+            easy: { startInterval: 1000, step: 40, floor: 220 },
+            medium: { startInterval: 800, step: 60, floor: 120 },
+            hard: { startInterval: 550, step: 80, floor: 80 }
+        };
+        let difficulty = localStorage.getItem('stackClimberDifficulty') || 'medium';
+
+        function selectDifficulty(d) {
+            difficulty = d;
+            localStorage.setItem('stackClimberDifficulty', d);
+            document.querySelectorAll('.diff-btn').forEach((b) => b.classList.toggle('selected', b.dataset.diff === d));
+            resetGame();
+        }
+
+        function computeDropInterval(lvl) {
+            const cfg = DIFFICULTIES[difficulty];
+            return Math.max(cfg.floor, cfg.startInterval - (lvl - 1) * cfg.step);
+        }
+
+        // Level now tracks total score rather than lines cleared, so hard-drop
+        // bonuses and bigger clears both push you up faster, not just line count.
+        const SCORE_PER_LEVEL = 1000;
+        function updateLevelFromScore() {
+            level = startLevel + Math.floor(score / SCORE_PER_LEVEL);
+            dropInterval = computeDropInterval(level);
+        }
+
+        // ---- Starting level: lets a run begin above level 1 (classic Tetris feature) ----
+        const MAX_START_LEVEL = 15;
+        let startLevel = Math.min(MAX_START_LEVEL, parseInt(localStorage.getItem('stackClimberStartLevel')) || 1);
+
+        function populateStartLevelSelect() {
+            const select = document.getElementById('startLevelSelect');
+            select.innerHTML = '';
+            for (let i = 1; i <= MAX_START_LEVEL; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = i;
+                select.appendChild(opt);
+            }
+            select.value = startLevel;
+        }
+
+        function setStartLevel(v) {
+            startLevel = Math.min(MAX_START_LEVEL, Math.max(1, parseInt(v)));
+            localStorage.setItem('stackClimberStartLevel', startLevel);
+            document.getElementById('startLevelSelect').value = startLevel;
+            resetGame();
+        }
+
+        // ---- 7-bag randomizer: fair piece distribution, standard Tetris technique ----
+        function nextFromBag() {
+            if (bag.length === 0) {
+                bag = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+                for (let i = bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [bag[i], bag[j]] = [bag[j], bag[i]];
+                }
+            }
+            return bag.pop();
+        }
+
+        function rotateMatrix(m) {
+            const n = m.length;
+            const result = [];
+            for (let x = 0; x < n; x++) {
+                const row = [];
+                for (let y = n - 1; y >= 0; y--) row.push(m[y][x]);
+                result.push(row);
+            }
+            return result;
+        }
+
+        function spawnPiece(type) {
+            const def = PIECES[type];
+            const matrix = def.matrix.map(row => row.slice());
+            const col = Math.floor((COLS - matrix[0].length) / 2);
+            return { type, matrix, color: def.color, col, row: 0 };
+        }
+
+        // ---- Audio: procedurally generated chiptune music + SFX (no audio files needed) ----
+        const NOTE_FREQ = { 'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'D#4': 311.13, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'C5': 523.25 };
+        const MUSIC_MELODY = ['A3', 'C4', 'D4', 'D#4', 'D4', 'C4', 'A3', null, 'F4', 'A4', 'C5', 'A4', 'F4', null, 'G4', null];
+        const MUSIC_STEP = 0.2;
+
+        let audioCtx = null;
+        let masterGain = null;
+        let musicMuted = localStorage.getItem('stackClimberMuted') === '1';
+        let musicLoopRunning = false;
+        let musicNextTime = 0;
+        let musicStep = 0;
+        document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+
+        function ensureAudio() {
+            if (audioCtx) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return;
+            }
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = musicMuted ? 0 : 0.15;
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function playTone(freq, startTime, duration, type, peakGain) {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(0.0001, startTime);
+            g.gain.linearRampToValueAtTime(peakGain, startTime + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.02);
+        }
+
+        function musicScheduler() {
+            while (musicNextTime < audioCtx.currentTime + 0.1) {
+                const note = MUSIC_MELODY[musicStep % MUSIC_MELODY.length];
+                if (note) playTone(NOTE_FREQ[note], musicNextTime, MUSIC_STEP * 0.85, 'square', 0.1);
+                musicNextTime += MUSIC_STEP;
+                musicStep++;
+            }
+        }
+
+        function startMusicLoopIfNeeded() {
+            if (musicLoopRunning || musicMuted || !audioCtx) return;
+            musicLoopRunning = true;
+            musicNextTime = audioCtx.currentTime + 0.05;
+            setInterval(musicScheduler, 50);
+        }
+
+        function toggleMute() {
+            musicMuted = !musicMuted;
+            localStorage.setItem('stackClimberMuted', musicMuted ? '1' : '0');
+            ensureAudio();
+            if (masterGain) masterGain.gain.linearRampToValueAtTime(musicMuted ? 0 : 0.15, audioCtx.currentTime + 0.05);
+            document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
+            if (!musicMuted) startMusicLoopIfNeeded();
+        }
+
+        function playMoveSound() {
+            if (!audioCtx) return;
+            playTone(220, audioCtx.currentTime, 0.04, 'square', 0.06);
+        }
+
+        function playRotateSound() {
+            if (!audioCtx) return;
+            playTone(440, audioCtx.currentTime, 0.06, 'triangle', 0.1);
+        }
+
+        function playLockSound() {
+            if (!audioCtx) return;
+            playTone(160, audioCtx.currentTime, 0.09, 'square', 0.12);
+        }
+
+        function playClearSound(count) {
+            if (!audioCtx) return;
+            const notes = [523, 659, 784, 1047];
+            for (let i = 0; i < count; i++) playTone(notes[i] || 1047, audioCtx.currentTime + i * 0.07, 0.16, 'triangle', 0.16);
+        }
+
+        function playJumpSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
+            g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+            osc.connect(g);
+            g.connect(masterGain);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.13);
+        }
+
+        function playGameOverSound() {
+            if (!audioCtx) return;
+            [392, 330, 262, 196].forEach((f, i) => playTone(f, audioCtx.currentTime + i * 0.14, 0.18, 'sawtooth', 0.16));
+        }
+
+        let audioUnlockedOnce = false;
+        function tryStartAudioOnGesture() {
+            ensureAudio();
+            if (!audioUnlockedOnce) {
+                audioUnlockedOnce = true;
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                g.gain.value = 0.0001;
+                osc.connect(g);
+                g.connect(masterGain);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.01);
+            }
+            startMusicLoopIfNeeded();
+        }
+        ['keydown', 'pointerdown', 'touchstart'].forEach((evt) => {
+            window.addEventListener(evt, tryStartAudioOnGesture, { passive: true });
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
+
+        // ---- Game state ----
+        function resetGame() {
+            board = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+            bag = [];
+            currentPiece = spawnPiece(nextFromBag());
+            nextPieceType = nextFromBag();
+
+            score = 0;
+            linesCleared = 0;
+            level = startLevel;
+            dropInterval = computeDropInterval(level);
+            lastDropTime = 0;
+
+            // Offset from the piece spawn column (also COLS/2) so the very first
+            // drop doesn't land directly on the character before they can react
+            const spawnCol = Math.floor(COLS / 4);
+            player = {
+                x: spawnCol * gridSize + (gridSize - PLAYER_W) / 2,
+                y: ROWS * gridSize - PLAYER_H,
+                vx: 0,
+                vy: 0
+            };
+            keys = { left: false, right: false, jump: false };
+            isGrounded = false;
+            softDropActive = false;
+
+            gameRunning = true;
+            gamePaused = false;
+            deathReason = null;
+            particles = [];
+            floatingTexts = [];
+
+            document.getElementById('pauseBtn').textContent = 'Pause';
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('gameOverModal').style.display = 'none';
+            updateHUD();
+            drawNextPreview();
+        }
+
+        function updateHUD() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lines').textContent = linesCleared;
+            document.getElementById('level').textContent = level;
+            document.getElementById('best').textContent = bestScore;
+        }
+
+        function togglePause() {
+            if (gameRunning) {
+                gamePaused = !gamePaused;
+                document.getElementById('pauseBtn').textContent = gamePaused ? 'Resume' : 'Pause';
+            }
+        }
+
+        function showModal(title, message) {
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverMessage').textContent = message;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('gameOverModal').style.display = 'block';
+        }
+
+        function triggerGameOver(reason) {
+            gameRunning = false;
+            deathReason = reason;
+            bestScore = Math.max(bestScore, score);
+            localStorage.setItem('stackClimberBest', bestScore);
+            playGameOverSound();
+            const titles = {
+                crush: '💥 CRUSHED!',
+                topout: '🏗️ TOPPED OUT!'
+            };
+            const messages = {
+                crush: 'A piece landed on you! Score: ' + score + ', Lines: ' + linesCleared,
+                topout: 'The stack reached the top! Score: ' + score + ', Lines: ' + linesCleared
+            };
+            showModal(titles[reason] || 'GAME OVER', messages[reason] || ('Score: ' + score));
+            updateHUD();
+        }
+
+        // ---- Piece <-> board collision ----
+        function canPlace(matrix, pieceCol, pieceRow) {
+            for (let y = 0; y < matrix.length; y++) {
+                for (let x = 0; x < matrix[y].length; x++) {
+                    if (!matrix[y][x]) continue;
+                    const col = pieceCol + x, row = pieceRow + y;
+                    if (col < 0 || col >= COLS || row >= ROWS) return false;
+                    if (row >= 0 && board[row][col]) return false;
+                }
+            }
+            return true;
+        }
+
+        function movePiece(dx) {
+            if (gamePaused || !gameRunning) return;
+            if (canPlace(currentPiece.matrix, currentPiece.col + dx, currentPiece.row)) {
+                currentPiece.col += dx;
+                playMoveSound();
+            }
+        }
+
+        function rotatePiece() {
+            if (gamePaused || !gameRunning) return;
+            const rotated = rotateMatrix(currentPiece.matrix);
+            const kicks = [0, -1, 1, -2, 2];
+            for (const k of kicks) {
+                if (canPlace(rotated, currentPiece.col + k, currentPiece.row)) {
+                    currentPiece.matrix = rotated;
+                    currentPiece.col += k;
+                    playRotateSound();
+                    return;
+                }
+            }
+        }
+
+        function getGhostRow() {
+            let ghostRow = currentPiece.row;
+            while (canPlace(currentPiece.matrix, currentPiece.col, ghostRow + 1)) ghostRow++;
+            return ghostRow;
+        }
+
+        function hardDrop() {
+            if (gamePaused || !gameRunning) return;
+            let dist = 0;
+            while (canPlace(currentPiece.matrix, currentPiece.col, currentPiece.row + 1)) {
+                currentPiece.row++;
+                dist++;
+            }
+            score += dist * 2;
+            updateLevelFromScore();
+            lockPiece();
+        }
+
+        // Does this piece (about to lock at pieceCol/pieceRow) overlap the character's
+        // current bounding box? That's the "crushed" loss condition unique to this game.
+        function checkCrush(matrix, pieceCol, pieceRow) {
+            const charCol1 = Math.floor(player.x / gridSize);
+            const charCol2 = Math.floor((player.x + PLAYER_W - 1) / gridSize);
+            const charRow1 = Math.floor(player.y / gridSize);
+            const charRow2 = Math.floor((player.y + PLAYER_H - 1) / gridSize);
+
+            for (let y = 0; y < matrix.length; y++) {
+                for (let x = 0; x < matrix[y].length; x++) {
+                    if (!matrix[y][x]) continue;
+                    const col = pieceCol + x, row = pieceRow + y;
+                    if (col >= charCol1 && col <= charCol2 && row >= charRow1 && row <= charRow2) return true;
+                }
+            }
+            return false;
+        }
+
+        function writeToBoard() {
+            const m = currentPiece.matrix;
+            for (let y = 0; y < m.length; y++) {
+                for (let x = 0; x < m[y].length; x++) {
+                    if (!m[y][x]) continue;
+                    const r = currentPiece.row + y, c = currentPiece.col + x;
+                    if (r >= 0 && r < ROWS) board[r][c] = currentPiece.color;
+                }
+            }
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row].every(cell => cell !== 0)) {
+                    board.splice(row, 1);
+                    board.unshift(new Array(COLS).fill(0));
+                    cleared++;
+                    row++;
+                }
+            }
+            return cleared;
+        }
+
+        function applyScore(cleared) {
+            linesCleared += cleared;
+            const points = [0, 100, 300, 500, 800][cleared] * level;
+            score += points;
+            updateLevelFromScore();
+        }
+
+        function spawnNext() {
+            currentPiece = spawnPiece(nextPieceType);
+            nextPieceType = nextFromBag();
+            drawNextPreview();
+            if (!canPlace(currentPiece.matrix, currentPiece.col, currentPiece.row)) {
+                triggerGameOver('topout');
+            }
+        }
+
+        function lockPiece() {
+            if (checkCrush(currentPiece.matrix, currentPiece.col, currentPiece.row)) {
+                writeToBoard();
+                triggerGameOver('crush');
+                return;
+            }
+            writeToBoard();
+            playLockSound();
+            const cleared = clearLines();
+            if (cleared > 0) {
+                applyScore(cleared);
+                playClearSound(cleared);
+            }
+            updateHUD();
+            if (gameRunning) spawnNext();
+        }
+
+        function tickGravity() {
+            if (canPlace(currentPiece.matrix, currentPiece.col, currentPiece.row + 1)) {
+                currentPiece.row++;
+            } else {
+                lockPiece();
+            }
+        }
+
+        // ---- Character platformer physics ----
+        // A cell is solid if it's locked board terrain OR part of the currently
+        // falling piece - the character can be blocked, ride, or be crushed by it.
+        function isSolid(col, row) {
+            if (col < 0 || col >= COLS || row >= ROWS || row < 0) return true;
+            if (board[row][col]) return true;
+            const localX = col - currentPiece.col, localY = row - currentPiece.row;
+            const m = currentPiece.matrix;
+            if (localY >= 0 && localY < m.length && localX >= 0 && localX < m[localY].length) {
+                if (m[localY][localX]) return true;
+            }
+            return false;
+        }
+
+        function resolveHorizontalCollisions() {
+            const top = Math.floor((player.y + 1) / gridSize);
+            const bottom = Math.floor((player.y + PLAYER_H - 1) / gridSize);
+
+            if (player.vx > 0) {
+                const rightCol = Math.floor((player.x + PLAYER_W) / gridSize);
+                for (let row = top; row <= bottom; row++) {
+                    if (isSolid(rightCol, row)) {
+                        player.x = rightCol * gridSize - PLAYER_W;
+                        player.vx = 0;
+                        break;
+                    }
+                }
+            } else if (player.vx < 0) {
+                const leftCol = Math.floor(player.x / gridSize);
+                for (let row = top; row <= bottom; row++) {
+                    if (isSolid(leftCol, row)) {
+                        player.x = (leftCol + 1) * gridSize;
+                        player.vx = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function resolveVerticalCollisions() {
+            const left = Math.floor((player.x + 2) / gridSize);
+            const right = Math.floor((player.x + PLAYER_W - 2) / gridSize);
+            isGrounded = false;
+
+            if (player.vy > 0) {
+                const bottomRow = Math.floor((player.y + PLAYER_H) / gridSize);
+                for (let col = left; col <= right; col++) {
+                    if (isSolid(col, bottomRow)) {
+                        player.y = bottomRow * gridSize - PLAYER_H;
+                        player.vy = 0;
+                        isGrounded = true;
+                        break;
+                    }
+                }
+            } else if (player.vy < 0) {
+                const topRow = Math.floor(player.y / gridSize);
+                for (let col = left; col <= right; col++) {
+                    if (isSolid(col, topRow)) {
+                        player.y = (topRow + 1) * gridSize;
+                        player.vy = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function updateCharacter() {
+            player.vx = 0;
+            if (keys.left) player.vx = -MOVE_SPEED;
+            if (keys.right) player.vx = MOVE_SPEED;
+            player.x += player.vx;
+            resolveHorizontalCollisions();
+
+            if (keys.jump && isGrounded) {
+                player.vy = JUMP_VELOCITY;
+                isGrounded = false;
+                playJumpSound();
+            }
+            keys.jump = false;
+
+            player.vy = Math.min(player.vy + GRAVITY, MAX_FALL_SPEED);
+            player.y += player.vy;
+            resolveVerticalCollisions();
+        }
+
+        // ---- Controls ----
+        // Using e.code (physical key position) instead of e.key (produced character)
+        // so WASD still works when the OS keyboard layout isn't English/QWERTY.
+        document.addEventListener('keydown', (e) => {
+            switch (e.code) {
+                case 'ArrowLeft':
+                    movePiece(-1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    movePiece(1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowUp':
+                    rotatePiece();
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    softDropActive = true;
+                    e.preventDefault();
+                    break;
+                case 'Space':
+                    hardDrop();
+                    e.preventDefault();
+                    break;
+                case 'KeyA':
+                    keys.left = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyD':
+                    keys.right = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyW':
+                    keys.jump = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyP':
+                    togglePause();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'ArrowDown':
+                    softDropActive = false;
+                    break;
+                case 'KeyA':
+                    keys.left = false;
+                    break;
+                case 'KeyD':
+                    keys.right = false;
+                    break;
+            }
+        });
+
+        document.querySelectorAll('.mc-btn[data-piece]').forEach((btn) => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                switch (btn.dataset.piece) {
+                    case 'left': movePiece(-1); break;
+                    case 'right': movePiece(1); break;
+                    case 'rotate': rotatePiece(); break;
+                    case 'drop': hardDrop(); break;
+                }
+            });
+        });
+
+        // Character controls: the D-pad's up/down buttons are hidden via
+        // mc-hide-vertical (this game has no vertical character movement),
+        // so only left/right/jump are actually wired here.
+        document.querySelectorAll('.mc-btn[data-char]').forEach((btn) => {
+            const action = btn.dataset.char;
+            if (action !== 'left' && action !== 'right' && action !== 'jump') return;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (action === 'jump') keys.jump = true;
+                else keys[action] = true;
+            });
+            const release = (e) => {
+                e.preventDefault();
+                if (action !== 'jump') keys[action] = false;
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
+        });
+
+        // ---- Rendering ----
+        function drawPieceMatrix(matrix, pieceCol, pieceRow, color) {
+            for (let y = 0; y < matrix.length; y++) {
+                for (let x = 0; x < matrix[y].length; x++) {
+                    if (!matrix[y][x]) continue;
+                    const row = pieceRow + y;
+                    if (row < 0) continue;
+                    drawCell(pieceCol + x, row, color);
+                }
+            }
+        }
+
+        function drawCell(col, row, color) {
+            const px = col * gridSize, py = row * gridSize;
+            ctx.fillStyle = color;
+            ctx.fillRect(px + 1, py + 1, gridSize - 2, gridSize - 2);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 1, py + 1, gridSize - 2, gridSize - 2);
+        }
+
+        function drawNextPreview() {
+            nextCtx.fillStyle = '#12121f';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            const def = PIECES[nextPieceType];
+            const m = def.matrix;
+            const cell = 16;
+            const offsetX = (nextCanvas.width - m[0].length * cell) / 2;
+            const offsetY = (nextCanvas.height - m.length * cell) / 2;
+            nextCtx.fillStyle = def.color;
+            for (let y = 0; y < m.length; y++) {
+                for (let x = 0; x < m[y].length; x++) {
+                    if (m[y][x]) nextCtx.fillRect(offsetX + x * cell + 1, offsetY + y * cell + 1, cell - 2, cell - 2);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#12121f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (board[row][col]) drawCell(col, row, board[row][col]);
+                }
+            }
+
+            const ghostRow = getGhostRow();
+            ctx.globalAlpha = 0.25;
+            drawPieceMatrix(currentPiece.matrix, currentPiece.col, ghostRow, currentPiece.color);
+            ctx.globalAlpha = 1;
+            drawPieceMatrix(currentPiece.matrix, currentPiece.col, currentPiece.row, currentPiece.color);
+
+            // Character (simple blockman)
+            ctx.fillStyle = '#e8b98c';
+            ctx.fillRect(player.x + 3, player.y, PLAYER_W - 6, 6);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(player.x, player.y + 6, PLAYER_W, 11);
+            ctx.fillStyle = '#5b3a1f';
+            ctx.fillRect(player.x, player.y + 17, PLAYER_W, 6);
+
+            for (const p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life / 20);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.textAlign = 'center';
+            for (const ft of floatingTexts) {
+                ctx.globalAlpha = Math.max(0, ft.life / 40);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText(ft.text, ft.x, ft.y);
+            }
+            ctx.globalAlpha = 1;
+
+            if (gamePaused) {
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 26px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        function gameLoop(currentTime) {
+            if (!gamePaused && gameRunning) {
+                updateCharacter();
+                const interval = softDropActive ? SOFT_DROP_INTERVAL : dropInterval;
+                if (currentTime - lastDropTime > interval) {
+                    tickGravity();
+                    lastDropTime = currentTime;
+                }
+            }
+            if (!gamePaused) {
+                for (const p of particles) { p.x += p.vx; p.y += p.vy; p.life--; }
+                particles = particles.filter(p => p.life > 0);
+                for (const ft of floatingTexts) { ft.y -= 0.4; ft.life--; }
+                floatingTexts = floatingTexts.filter(ft => ft.life > 0);
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        bestScore = parseInt(localStorage.getItem('stackClimberBest')) || 0;
+        document.querySelectorAll('.diff-btn').forEach((b) => b.classList.toggle('selected', b.dataset.diff === difficulty));
+        populateStartLevelSelect();
+        resetGame();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
