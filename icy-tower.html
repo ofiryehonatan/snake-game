@@ -53,6 +53,42 @@
             touch-action: none;
         }
 
+        /* ==== Full Size mode: stretch the canvas to fill the viewport ====
+           Canvas and the toggle button get moved to be direct children of
+           <body> by JS before this class is toggled on, since .container has
+           backdrop-filter (a stacking-context/containing-block trigger) that
+           would otherwise trap a position:fixed descendant below the true
+           viewport-level siblings like the mobile controls bar. */
+        body.fullscreen-game {
+            overflow: hidden;
+        }
+
+        body.fullscreen-game #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            z-index: 9999;
+        }
+
+        body.fullscreen-game #fullscreenBtn {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 10001;
+        }
+
+        body.fullscreen-game .mobile-controls {
+            z-index: 10000;
+        }
+
         /* ==== Floating mobile controls (frosted-glass buttons, zero container background) ====
            Discrete Left/Right/Jump beat tilt or tap-anywhere here: precisely
            landing on a drifting/cracked/spiked floor needs immediate,
@@ -125,32 +161,6 @@
             pointer-events: auto;
         }
 
-        .mobile-controls.mc-hidden {
-            display: none !important;
-        }
-
-        .mc-toggle {
-            display: none;
-            margin: 4px auto 0;
-            padding: 6px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            color: white;
-            font-size: 0.8em;
-            font-weight: bold;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            .mc-toggle {
-                display: block;
-            }
-        }
 
         .info {
             display: flex;
@@ -320,8 +330,6 @@
             }
         </script>
 
-        <button class="mc-toggle" id="mcToggle">👁 Hide Controls</button>
-
         <canvas id="gameCanvas" width="400" height="600"></canvas>
 
         <div class="info">
@@ -334,6 +342,7 @@
             <button id="pauseBtn" onclick="togglePause()">Pause</button>
             <button onclick="resetGame()">New Game</button>
             <button id="muteBtn" onclick="toggleMute()">🔊</button>
+            <button id="fullscreenBtn" onclick="toggleFullscreen()" title="Full Size">⛶</button>
         </div>
 
         <a class="home-link" href="index.html">&larr; Back to Menu</a>
@@ -454,6 +463,43 @@
             document.getElementById('muteBtn').textContent = musicMuted ? '🔇' : '🔊';
             if (!musicMuted) startMusicLoopIfNeeded();
         }
+
+        // "Full Size" mode stretches the canvas to fill the viewport (aspect
+        // ratio preserved, letterboxed if needed) via CSS, instead of the
+        // browser's Fullscreen API. The canvas and this button are moved to
+        // be direct children of <body> - see the CSS comment above for why.
+        let fullSizeActive = false;
+        let fullSizeCanvasHome = null;
+        let fullSizeBtnHome = null;
+
+        function toggleFullscreen() {
+            const canvasEl = document.getElementById('gameCanvas');
+            const btn = document.getElementById('fullscreenBtn');
+            fullSizeActive = !fullSizeActive;
+            if (fullSizeActive) {
+                fullSizeCanvasHome = { parent: canvasEl.parentNode, next: canvasEl.nextSibling };
+                fullSizeBtnHome = { parent: btn.parentNode, next: btn.nextSibling };
+                document.body.appendChild(canvasEl);
+                document.body.appendChild(btn);
+                document.body.classList.add('fullscreen-game');
+            } else {
+                document.body.classList.remove('fullscreen-game');
+                fullSizeCanvasHome.parent.insertBefore(canvasEl, fullSizeCanvasHome.next);
+                fullSizeBtnHome.parent.insertBefore(btn, fullSizeBtnHome.next);
+            }
+            updateFullscreenBtn();
+        }
+
+        function updateFullscreenBtn() {
+            const btn = document.getElementById('fullscreenBtn');
+            if (!btn) return;
+            btn.textContent = fullSizeActive ? '🗗' : '⛶';
+            btn.title = fullSizeActive ? 'Exit Full Size' : 'Full Size';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && fullSizeActive) toggleFullscreen();
+        });
 
         function playJumpSound() {
             if (!audioCtx) return;
@@ -1020,24 +1066,6 @@
             keys['jump'] = true;
         });
 
-        // Let players hide the on-screen controls if they don't need them,
-        // remembered per device
-        (function () {
-            const STORAGE_KEY = 'mcHidden-icytower';
-            const toggleBtn = document.getElementById('mcToggle');
-            const controls = document.getElementById('mobileControls');
-            function applyState(hidden) {
-                controls.classList.toggle('mc-hidden', hidden);
-                toggleBtn.textContent = hidden ? '👁 Show Controls' : '👁 Hide Controls';
-            }
-            let hidden = localStorage.getItem(STORAGE_KEY) === 'true';
-            applyState(hidden);
-            toggleBtn.addEventListener('click', () => {
-                hidden = !hidden;
-                localStorage.setItem(STORAGE_KEY, hidden);
-                applyState(hidden);
-            });
-        })();
 
         resetGame();
         requestAnimationFrame(gameLoop);
