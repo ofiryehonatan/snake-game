@@ -147,125 +147,6 @@
             margin-top: 10px;
         }
 
-        /* ==== Unified mobile control bar (shared layout/classes across all games) ====
-           Right-handed ergonomics: primary action (Jump/Drop) and, for Snake, the
-           full D-pad live in the bottom-right "dominant thumb" zone. Directional-only
-           left/right navigation for secondary things (steering a piece, a platformer
-           character) lives in the bottom-left zone. */
-        .mobile-controls {
-            display: none;
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 10px;
-            padding: 0 16px;
-            justify-content: space-between;
-            align-items: flex-end;
-            pointer-events: none;
-            z-index: 500;
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            .mobile-controls {
-                display: flex;
-            }
-            /* Anchor to the top instead of vertically centering - otherwise a short
-               page can float mid-viewport and the fixed bottom bar (docked to the
-               viewport, not the container) can overlap it regardless of padding. */
-            body {
-                align-items: flex-start;
-            }
-            /* Cap and scroll the container instead of just padding it - padding only
-               guarantees clearance for whatever is scrolled to the very end, but the
-               fixed bar occupies the same screen region at every scroll position, so
-               anything mid-page can still land behind it on first load otherwise. */
-            .container {
-                max-height: calc(100vh - 190px);
-                overflow-y: auto;
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-            }
-            .mobile-controls {
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-            }
-        }
-
-        .mc-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            color: white;
-            font-size: 1.7em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            padding: 0;
-        }
-
-        .mc-btn:active {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .mc-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            pointer-events: auto;
-        }
-
-        .mc-action-main {
-            width: 92px;
-            height: 92px;
-            border-radius: 50%;
-            font-size: 1.05em;
-            font-weight: bold;
-        }
-
-        .mc-secondary-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .mc-secondary {
-            min-width: 56px;
-            height: 52px;
-            border-radius: 999px;
-            font-size: 0.85em;
-            font-weight: bold;
-            padding: 0 12px;
-        }
-
-        .mc-secondary.active {
-            border-color: #ffd700;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-        }
-
-        .mc-move-cluster {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .mc-move-cluster .mc-btn {
-            width: 56px;
-            height: 56px;
-            font-size: 1.4em;
-        }
-
         .difficulty-row {
             display: flex;
             justify-content: center;
@@ -309,13 +190,6 @@
 
         .level-select option {
             color: black;
-        }
-
-        .tc-group-label {
-            color: #ffd700;
-            font-size: 0.7em;
-            font-weight: bold;
-            letter-spacing: 1px;
         }
 
         .button-group {
@@ -456,28 +330,6 @@
         </div>
 
         <a href="index.html" class="home-link">&larr; Back to Menu</a>
-    </div>
-
-    <div class="mobile-controls" id="mobileControls">
-        <div class="mc-move-cluster">
-            <div class="tc-group-label">PIECE</div>
-            <div class="mc-secondary-row">
-                <button class="mc-btn" data-piece="left">&#9664;</button>
-                <button class="mc-btn" data-piece="right">&#9654;</button>
-            </div>
-            <div class="tc-group-label">CHARACTER</div>
-            <div class="mc-secondary-row">
-                <button class="mc-btn" data-char="left">&#9664;</button>
-                <button class="mc-btn" data-char="right">&#9654;</button>
-            </div>
-        </div>
-        <div class="mc-actions">
-            <div class="mc-secondary-row">
-                <button class="mc-btn mc-secondary" data-piece="rotate">&#8635;</button>
-                <button class="mc-btn mc-secondary" data-piece="drop">DROP</button>
-            </div>
-            <button class="mc-btn mc-action-main" data-char="jump">JUMP</button>
-        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -1088,36 +940,6 @@
                     keys.right = false;
                     break;
             }
-        });
-
-        document.querySelectorAll('.mc-btn[data-piece]').forEach((btn) => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                switch (btn.dataset.piece) {
-                    case 'left': movePiece(-1); break;
-                    case 'right': movePiece(1); break;
-                    case 'rotate': rotatePiece(); break;
-                    case 'drop': hardDrop(); break;
-                }
-            });
-        });
-
-        // Character controls (left/right/jump) - this game has no vertical
-        // character movement, so there's no up/down to wire up here.
-        document.querySelectorAll('.mc-btn[data-char]').forEach((btn) => {
-            const action = btn.dataset.char;
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                if (action === 'jump') keys.jump = true;
-                else keys[action] = true;
-            });
-            const release = (e) => {
-                e.preventDefault();
-                if (action !== 'jump') keys[action] = false;
-            };
-            btn.addEventListener('pointerup', release);
-            btn.addEventListener('pointerleave', release);
-            btn.addEventListener('pointercancel', release);
         });
 
         // ---- Rendering ----

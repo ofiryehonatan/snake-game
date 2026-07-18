@@ -119,168 +119,6 @@
             margin-top: 10px;
         }
 
-        /* ==== Unified mobile control bar (shared layout/classes across all games) ====
-           Right-handed ergonomics: primary action (Jump/Drop) and, for Snake, the
-           full D-pad live in the bottom-right "dominant thumb" zone. Directional-only
-           left/right navigation for secondary things (steering a piece, a platformer
-           character) lives in the bottom-left zone. */
-        .mobile-controls {
-            display: none;
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 10px;
-            padding: 0 16px;
-            justify-content: space-between;
-            align-items: flex-end;
-            pointer-events: none;
-            z-index: 500;
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            .mobile-controls {
-                display: flex;
-            }
-            /* Anchor to the top instead of vertically centering - otherwise a short
-               page can float mid-viewport and the fixed bottom bar (docked to the
-               viewport, not the container) can overlap it regardless of padding. */
-            body {
-                align-items: flex-start;
-            }
-            /* Cap and scroll the container instead of just padding it - padding only
-               guarantees clearance for whatever is scrolled to the very end, but the
-               fixed bar occupies the same screen region at every scroll position, so
-               anything mid-page can still land behind it on first load otherwise. */
-            .container {
-                max-height: calc(100vh - 238px);
-                overflow-y: auto;
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-            }
-            .mobile-controls {
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-            }
-        }
-
-        .mc-align-right {
-            margin-left: auto;
-        }
-
-        .mc-dpad {
-            display: grid;
-            grid-template-columns: 64px 64px 64px;
-            grid-template-rows: 64px 64px 64px;
-            grid-template-areas:
-                ".    up    ."
-                "left .     right"
-                ".    down  .";
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .mc-dpad-up { grid-area: up; }
-        .mc-dpad-down { grid-area: down; }
-        .mc-dpad-left { grid-area: left; }
-        .mc-dpad-right { grid-area: right; }
-
-        .mc-hide-vertical .mc-dpad-up,
-        .mc-hide-vertical .mc-dpad-down {
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .mc-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            color: white;
-            font-size: 1.7em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            padding: 0;
-        }
-
-        .mc-btn:active {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .mc-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            pointer-events: auto;
-        }
-
-        .mc-action-main {
-            width: 92px;
-            height: 92px;
-            border-radius: 50%;
-            font-size: 1.05em;
-            font-weight: bold;
-        }
-
-        .mc-secondary-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .mc-secondary {
-            min-width: 60px;
-            height: 52px;
-            border-radius: 999px;
-            font-size: 0.85em;
-            font-weight: bold;
-            padding: 0 14px;
-        }
-
-        .mc-secondary.active {
-            border-color: #ffd700;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-        }
-
-        .mc-move-cluster {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .mc-nav-alt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-            max-width: 150px;
-        }
-
-        .mc-nav-alt .mc-secondary {
-            width: 100%;
-        }
-
-        .mc-tilt-status {
-            color: #cfe8ff;
-            font-size: 0.7em;
-            text-align: center;
-            line-height: 1.3;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 6px 8px;
-            border-radius: 8px;
-        }
 
         .button-group {
             display: flex;
@@ -373,7 +211,6 @@
             <div class="controls">
                 Arrow Keys / A,D to run &nbsp;•&nbsp; Up / W / Space to jump (only while grounded)<br>
                 Desktop: <strong>Left-click</strong> a block to mine it, <strong>right-click</strong> to flag it<br>
-                Touch: use the D-pad to move, tap a block to mine (or flag, with Flag Mode on)<br>
                 15% of the ground hides bombs &mdash; mining one ends the game. Flagged blocks stay solid and safe.
             </div>
         </details>
@@ -398,21 +235,6 @@
         </div>
 
         <a href="index.html" class="home-link">&larr; Back to Menu</a>
-    </div>
-
-    <div class="mobile-controls" id="mobileControls">
-        <div class="mc-dpad mc-hide-vertical">
-            <button class="mc-btn mc-dpad-up" data-dir="up">&#9650;</button>
-            <button class="mc-btn mc-dpad-left" data-dir="left">&#9664;</button>
-            <button class="mc-btn mc-dpad-right" data-dir="right">&#9654;</button>
-            <button class="mc-btn mc-dpad-down" data-dir="down">&#9660;</button>
-        </div>
-        <div class="mc-actions">
-            <div class="mc-secondary-row">
-                <button class="mc-btn mc-secondary" id="flagModeBtn" onclick="toggleFlagMode()">🚩 Flag: OFF</button>
-            </div>
-            <button class="mc-btn mc-action-main" data-action="jump">JUMP</button>
-        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -674,13 +496,6 @@
                 gamePaused = !gamePaused;
                 document.getElementById('pauseBtn').textContent = gamePaused ? 'Resume' : 'Pause';
             }
-        }
-
-        function toggleFlagMode() {
-            flagMode = !flagMode;
-            const btn = document.getElementById('flagModeBtn');
-            btn.textContent = flagMode ? '🚩 Flag: ON' : '🚩 Flag: OFF';
-            btn.classList.toggle('active', flagMode);
         }
 
         function showModal(title, message) {
@@ -982,31 +797,6 @@
                     keys.right = false;
                     break;
             }
-        });
-
-        // On-screen D-pad (touch devices) - only left/right are wired since
-        // this game hides up/down via the mc-hide-vertical class
-        document.querySelectorAll('.mc-dpad [data-dir]').forEach((btn) => {
-            const dir = btn.dataset.dir;
-            if (dir !== 'left' && dir !== 'right') return;
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                keys[dir] = true;
-            });
-            const release = (e) => {
-                e.preventDefault();
-                keys[dir] = false;
-            };
-            btn.addEventListener('pointerup', release);
-            btn.addEventListener('pointerleave', release);
-            btn.addEventListener('pointercancel', release);
-        });
-
-        document.querySelectorAll('.mc-btn[data-action="jump"]').forEach((btn) => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                keys.jump = true;
-            });
         });
 
         function hiddenCellColor(row) {

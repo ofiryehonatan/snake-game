@@ -53,167 +53,25 @@
             touch-action: none;
         }
 
-        /* ==== Unified mobile control bar (shared layout/classes across all games) ====
-           Right-handed ergonomics: primary action (Jump/Drop) and, for Snake, the
-           full D-pad live in the bottom-right "dominant thumb" zone. Directional-only
-           left/right navigation for secondary things (steering a piece, a platformer
-           character) lives in the bottom-left zone. */
-        .mobile-controls {
+        .tilt-enable-btn {
             display: none;
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 10px;
-            padding: 0 16px;
-            justify-content: space-between;
-            align-items: flex-end;
-            pointer-events: none;
-            z-index: 500;
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            .mobile-controls {
-                display: flex;
-            }
-            /* Anchor to the top instead of vertically centering - otherwise a short
-               page can float mid-viewport and the fixed bottom bar (docked to the
-               viewport, not the container) can overlap it regardless of padding. */
-            body {
-                align-items: flex-start;
-            }
-            /* Cap and scroll the container instead of just padding it - padding only
-               guarantees clearance for whatever is scrolled to the very end, but the
-               fixed bar occupies the same screen region at every scroll position, so
-               anything mid-page can still land behind it on first load otherwise. */
-            .container {
-                max-height: calc(100vh - 122px);
-                overflow-y: auto;
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-            }
-            .mobile-controls {
-                background: transparent !important;
-                background-image: none !important;
-                box-shadow: none !important;
-            }
-        }
-
-        .mc-align-right {
-            margin-left: auto;
-        }
-
-        .mc-dpad {
-            display: grid;
-            grid-template-columns: 64px 64px 64px;
-            grid-template-rows: 64px 64px 64px;
-            grid-template-areas:
-                ".    up    ."
-                "left .     right"
-                ".    down  .";
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .mc-dpad-up { grid-area: up; }
-        .mc-dpad-down { grid-area: down; }
-        .mc-dpad-left { grid-area: left; }
-        .mc-dpad-right { grid-area: right; }
-
-        .mc-hide-vertical .mc-dpad-up,
-        .mc-hide-vertical .mc-dpad-down {
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .mc-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            color: white;
-            font-size: 1.7em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            padding: 0;
-        }
-
-        .mc-btn:active {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .mc-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            pointer-events: auto;
-        }
-
-        .mc-action-main {
-            width: 92px;
-            height: 92px;
-            border-radius: 50%;
-            font-size: 1.05em;
-            font-weight: bold;
-        }
-
-        .mc-secondary-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .mc-secondary {
-            min-width: 60px;
-            height: 52px;
+            margin: 12px auto 0;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.6);
             border-radius: 999px;
-            font-size: 0.85em;
+            color: white;
+            font-size: 0.9em;
             font-weight: bold;
-            padding: 0 14px;
+            cursor: pointer;
         }
 
-        .mc-secondary.active {
-            border-color: #ffd700;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-        }
-
-        .mc-move-cluster {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .mc-nav-alt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-            max-width: 150px;
-        }
-
-        .mc-nav-alt .mc-secondary {
-            width: 100%;
-        }
-
-        .mc-tilt-status {
+        .tilt-status {
+            display: none;
+            margin-top: 10px;
             color: #cfe8ff;
-            font-size: 0.7em;
+            font-size: 0.8em;
             text-align: center;
-            line-height: 1.3;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 6px 8px;
-            border-radius: 8px;
         }
 
         .info {
@@ -392,6 +250,9 @@
             <div class="combo-box">Combo: <span id="combo">x0</span></div>
         </div>
 
+        <button class="tilt-enable-btn" id="tiltEnableBtn" style="display:none;">Enable Tilt</button>
+        <div class="tilt-status" id="tiltStatus" style="display:none;">Tilt to run &bull; tap to jump</div>
+
         <div class="button-group">
             <button id="pauseBtn" onclick="togglePause()">Pause</button>
             <button onclick="resetGame()">New Game</button>
@@ -399,16 +260,6 @@
         </div>
 
         <a class="home-link" href="index.html">&larr; Back to Menu</a>
-    </div>
-
-    <div class="mobile-controls" id="mobileControls">
-        <div class="mc-nav-alt">
-            <button class="mc-btn mc-secondary" id="tiltEnableBtn" style="display:none;">Enable Tilt</button>
-            <div class="mc-tilt-status" id="tiltStatus" style="display:none;">Tilt to run &bull; tap to jump</div>
-        </div>
-        <div class="mc-actions">
-            <button class="mc-btn mc-action-main" data-action="jump">JUMP</button>
-        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -1065,14 +916,6 @@
             if (e.pointerType !== 'touch') return;
             if (e.target.closest('button, a')) return;
             keys['jump'] = true;
-        });
-
-        // On-screen jump button (touch devices)
-        document.querySelectorAll('.mc-btn[data-action="jump"]').forEach((btn) => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                keys['jump'] = true;
-            });
         });
 
         // Tilt controls: phone gamma (left/right tilt) drives running
