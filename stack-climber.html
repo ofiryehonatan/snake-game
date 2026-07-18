@@ -113,6 +113,40 @@
             line-height: 1.6;
         }
 
+        .controls-details {
+            margin-top: 16px;
+        }
+
+        .controls-details > summary {
+            color: white;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            list-style: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .controls-details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .controls-details > summary::before {
+            content: '\25B8';
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+
+        .controls-details[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .controls-details .controls {
+            margin-top: 10px;
+        }
+
         /* ==== Unified mobile control bar (shared layout/classes across all games) ====
            Right-handed ergonomics: primary action (Jump/Drop) and, for Snake, the
            full D-pad live in the bottom-right "dominant thumb" zone. Directional-only
@@ -129,11 +163,6 @@
             align-items: flex-end;
             pointer-events: none;
             z-index: 500;
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            border: none !important;
         }
 
         @media (hover: none) and (pointer: coarse) {
@@ -153,18 +182,25 @@
             .container {
                 max-height: calc(100vh - 190px);
                 overflow-y: auto;
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
             }
-            /* The keyboard instructions are redundant once labeled touch buttons
-               are visible, and this game already needs more scroll room than most. */
-            .controls {
-                display: none;
+            .mobile-controls {
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
             }
         }
 
         .mc-btn {
-            background: transparent;
+            background: rgba(255, 255, 255, 0.12);
             border: 2px solid rgba(255, 255, 255, 0.5);
             border-radius: 50%;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             color: white;
             font-size: 1.7em;
             display: flex;
@@ -177,7 +213,7 @@
         }
 
         .mc-btn:active {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         .mc-actions {
@@ -372,12 +408,19 @@
         <h1>🧗 STACK CLIMBER</h1>
         <div style="color:white;margin-bottom:10px;font-size:0.9em;opacity:0.85;">by Ofir Yehonatan</div>
 
-        <div class="controls">
-            <strong>Controls:</strong><br>
-            <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
-            <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
-            Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
-        </div>
+        <details class="controls-details" id="controlsDetails" open>
+            <summary>How to Play</summary>
+            <div class="controls">
+                <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
+                <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
+                Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
+            </div>
+        </details>
+        <script>
+            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+                document.getElementById('controlsDetails').open = false;
+            }
+        </script>
 
         <div class="board-row">
             <canvas id="gameCanvas" width="300" height="600"></canvas>

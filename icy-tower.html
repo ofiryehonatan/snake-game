@@ -69,11 +69,6 @@
             align-items: flex-end;
             pointer-events: none;
             z-index: 500;
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            border: none !important;
         }
 
         @media (hover: none) and (pointer: coarse) {
@@ -93,6 +88,16 @@
             .container {
                 max-height: calc(100vh - 122px);
                 overflow-y: auto;
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+            .mobile-controls {
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
             }
         }
 
@@ -124,9 +129,11 @@
         }
 
         .mc-btn {
-            background: transparent;
+            background: rgba(255, 255, 255, 0.12);
             border: 2px solid rgba(255, 255, 255, 0.5);
             border-radius: 50%;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             color: white;
             font-size: 1.7em;
             display: flex;
@@ -139,7 +146,7 @@
         }
 
         .mc-btn:active {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         .mc-actions {
@@ -239,6 +246,40 @@
             line-height: 1.6;
         }
 
+        .controls-details {
+            margin-top: 20px;
+        }
+
+        .controls-details > summary {
+            color: white;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            list-style: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .controls-details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .controls-details > summary::before {
+            content: '\25B8';
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+
+        .controls-details[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .controls-details .controls {
+            margin-top: 10px;
+        }
+
         .button-group {
             display: flex;
             gap: 10px;
@@ -327,14 +368,21 @@
     <div class="container">
         <h1>🧊 ICY TOWER</h1>
 
-        <div class="controls">
-            <strong>Controls:</strong><br>
-            Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
-            On phone: tilt left/right to run, tap anywhere on screen to jump<br>
-            Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
-            <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
-            <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
-        </div>
+        <details class="controls-details" id="controlsDetails" open>
+            <summary>How to Play</summary>
+            <div class="controls">
+                Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
+                On phone: tilt left/right to run, tap anywhere on screen to jump<br>
+                Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
+                <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
+                <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
+            </div>
+        </details>
+        <script>
+            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+                document.getElementById('controlsDetails').open = false;
+            }
+        </script>
 
         <canvas id="gameCanvas" width="400" height="600"></canvas>
 
