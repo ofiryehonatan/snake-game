@@ -61,6 +61,111 @@
             touch-action: none;
         }
 
+        /* ==== Floating mobile controls (frosted-glass buttons, zero container background) ====
+           This game needs 7 distinct actions (piece left/right/rotate/drop,
+           character left/right/jump), so buttons are the only sane input -
+           grouped by what they control (PIECE vs CHARACTER) since two
+           identical-looking arrow pairs need a label to stay unambiguous.
+           Right-handed ergonomics: movement clusters sit under the left
+           thumb, the primary Jump plus piece Rotate/Drop sit under the
+           right. Only the buttons carry the frosted-glass tint - every
+           wrapper stays fully transparent so the board is never obscured. */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+            padding: 0 16px;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 500;
+            background: transparent;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+            body {
+                align-items: flex-start;
+            }
+            .container {
+                max-height: calc(100vh - 260px);
+                overflow-y: auto;
+            }
+        }
+
+        .mc-group-label {
+            color: #ffd700;
+            font-size: 0.65em;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .mc-move-cluster {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .mc-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .mc-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 1.4em;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            padding: 0;
+        }
+
+        .mc-btn:active {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .mc-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-secondary {
+            width: auto;
+            min-width: 56px;
+            height: 46px;
+            border-radius: 999px;
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 0 12px;
+        }
+
+        .mc-action-main {
+            width: 80px;
+            height: 80px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
         .side-panel {
             display: flex;
             flex-direction: column;
@@ -287,6 +392,7 @@
             <div class="controls">
                 <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
                 <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
+                Touch: PIECE and CHARACTER buttons steer each independently, Rotate/Drop/Jump on the right<br>
                 Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
             </div>
         </details>
@@ -330,6 +436,28 @@
         </div>
 
         <a href="index.html" class="home-link">&larr; Back to Menu</a>
+    </div>
+
+    <div class="mobile-controls" id="mobileControls">
+        <div class="mc-move-cluster">
+            <div class="mc-group-label">PIECE</div>
+            <div class="mc-row">
+                <button class="mc-btn" data-piece="left">&#9664;</button>
+                <button class="mc-btn" data-piece="right">&#9654;</button>
+            </div>
+            <div class="mc-group-label">CHARACTER</div>
+            <div class="mc-row">
+                <button class="mc-btn" data-char="left">&#9664;</button>
+                <button class="mc-btn" data-char="right">&#9654;</button>
+            </div>
+        </div>
+        <div class="mc-actions">
+            <div class="mc-row">
+                <button class="mc-btn mc-secondary" data-piece="rotate">&#8635;</button>
+                <button class="mc-btn mc-secondary" data-piece="drop">DROP</button>
+            </div>
+            <button class="mc-btn mc-action-main" data-char="jump">JUMP</button>
+        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -940,6 +1068,37 @@
                     keys.right = false;
                     break;
             }
+        });
+
+        // On-screen piece controls (touch devices)
+        document.querySelectorAll('.mc-btn[data-piece]').forEach((btn) => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                switch (btn.dataset.piece) {
+                    case 'left': movePiece(-1); break;
+                    case 'right': movePiece(1); break;
+                    case 'rotate': rotatePiece(); break;
+                    case 'drop': hardDrop(); break;
+                }
+            });
+        });
+
+        // On-screen character controls (left/right/jump) - this game has no
+        // vertical character movement, so there's no up/down to wire up here.
+        document.querySelectorAll('.mc-btn[data-char]').forEach((btn) => {
+            const action = btn.dataset.char;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (action === 'jump') keys.jump = true;
+                else keys[action] = true;
+            });
+            const release = (e) => {
+                e.preventDefault();
+                if (action !== 'jump') keys[action] = false;
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
         });
 
         // ---- Rendering ----

@@ -55,6 +55,100 @@
             cursor: pointer;
         }
 
+        /* ==== Floating mobile controls (frosted-glass buttons, zero container background) ====
+           Right-handed ergonomics: Left/Right sit under the left thumb, Jump
+           and the Flag-mode toggle sit under the right thumb. Mining/flagging
+           a block is still a direct tap on the board itself (see the canvas
+           touchstart handler); these buttons only cover movement + jump +
+           the flag-mode toggle. Only the buttons carry the frosted-glass
+           tint - every wrapper stays fully transparent so the board is
+           never obscured. */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+            padding: 0 16px;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 500;
+            background: transparent;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+            body {
+                align-items: flex-start;
+            }
+            .container {
+                max-height: calc(100vh - 220px);
+                overflow-y: auto;
+            }
+        }
+
+        .mc-move {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 1.7em;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            padding: 0;
+        }
+
+        .mc-btn:active {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .mc-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-action-main {
+            width: 88px;
+            height: 88px;
+            font-size: 1.05em;
+            font-weight: bold;
+        }
+
+        .mc-secondary {
+            width: auto;
+            min-width: 96px;
+            height: 46px;
+            border-radius: 999px;
+            font-size: 0.8em;
+            font-weight: bold;
+            padding: 0 14px;
+        }
+
+        .mc-secondary.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
         .info {
             display: flex;
             justify-content: space-around;
@@ -211,6 +305,7 @@
             <div class="controls">
                 Arrow Keys / A,D to run &nbsp;•&nbsp; Up / W / Space to jump (only while grounded)<br>
                 Desktop: <strong>Left-click</strong> a block to mine it, <strong>right-click</strong> to flag it<br>
+                Touch: Left/Right + Jump buttons to move, tap a block to mine it (or flag it, with Flag Mode on)<br>
                 15% of the ground hides bombs &mdash; mining one ends the game. Flagged blocks stay solid and safe.
             </div>
         </details>
@@ -235,6 +330,17 @@
         </div>
 
         <a href="index.html" class="home-link">&larr; Back to Menu</a>
+    </div>
+
+    <div class="mobile-controls" id="mobileControls">
+        <div class="mc-move">
+            <button class="mc-btn" data-dir="left">&#9664;</button>
+            <button class="mc-btn" data-dir="right">&#9654;</button>
+        </div>
+        <div class="mc-actions">
+            <button class="mc-btn mc-secondary" id="flagModeBtn" onclick="toggleFlagMode()">🚩 Flag: OFF</button>
+            <button class="mc-btn mc-action-main" data-action="jump">JUMP</button>
+        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -496,6 +602,13 @@
                 gamePaused = !gamePaused;
                 document.getElementById('pauseBtn').textContent = gamePaused ? 'Resume' : 'Pause';
             }
+        }
+
+        function toggleFlagMode() {
+            flagMode = !flagMode;
+            const btn = document.getElementById('flagModeBtn');
+            btn.textContent = flagMode ? '🚩 Flag: ON' : '🚩 Flag: OFF';
+            btn.classList.toggle('active', flagMode);
         }
 
         function showModal(title, message) {
@@ -797,6 +910,27 @@
                     keys.right = false;
                     break;
             }
+        });
+
+        // On-screen Left/Right (touch devices) - held while pressed, like the keys
+        document.querySelectorAll('.mc-move [data-dir]').forEach((btn) => {
+            const dir = btn.dataset.dir;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                keys[dir] = true;
+            });
+            const release = (e) => {
+                e.preventDefault();
+                keys[dir] = false;
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
+        });
+
+        document.querySelector('.mc-btn[data-action="jump"]').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            keys.jump = true;
         });
 
         function hiddenCellColor(row) {

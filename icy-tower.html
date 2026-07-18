@@ -53,25 +53,76 @@
             touch-action: none;
         }
 
-        .tilt-enable-btn {
+        /* ==== Floating mobile controls (frosted-glass buttons, zero container background) ====
+           Discrete Left/Right/Jump beat tilt or tap-anywhere here: precisely
+           landing on a drifting/cracked/spiked floor needs immediate,
+           repeatable horizontal control a tilt gesture can't reliably give.
+           Right-handed ergonomics: Left/Right under the left thumb, Jump
+           under the right. Only the buttons carry the frosted-glass tint -
+           every wrapper stays fully transparent so the board is never
+           obscured. */
+        .mobile-controls {
             display: none;
-            margin: 12px auto 0;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            border-radius: 999px;
-            color: white;
-            font-size: 0.9em;
-            font-weight: bold;
-            cursor: pointer;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+            padding: 0 16px;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 500;
+            background: transparent;
         }
 
-        .tilt-status {
-            display: none;
-            margin-top: 10px;
-            color: #cfe8ff;
-            font-size: 0.8em;
-            text-align: center;
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+            body {
+                align-items: flex-start;
+            }
+            .container {
+                max-height: calc(100vh - 200px);
+                overflow-y: auto;
+            }
+        }
+
+        .mc-move {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .mc-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 1.7em;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            padding: 0;
+        }
+
+        .mc-btn:active {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .mc-action-main {
+            width: 88px;
+            height: 88px;
+            font-size: 1.05em;
+            font-weight: bold;
+            pointer-events: auto;
         }
 
         .info {
@@ -230,7 +281,7 @@
             <summary>How to Play</summary>
             <div class="controls">
                 Arrow Keys / A,D to run &nbsp;•&nbsp; Space / W / Up to jump &nbsp;•&nbsp; P to pause<br>
-                On phone: tilt left/right to run, tap anywhere on screen to jump<br>
+                Touch: Left/Right + Jump buttons<br>
                 Build up running speed before you jump to leap higher and skip floors for combo bonuses!<br>
                 <span style="color:#7dd3fc;">Rising ice</span> chases from below, <span style="color:#5eead4;">teal floors</span> drift,
                 <span style="color:#f87171;">cracked floors</span> crumble, and <span style="color:#ef4444;">spiked floors</span> must be skipped!
@@ -250,9 +301,6 @@
             <div class="combo-box">Combo: <span id="combo">x0</span></div>
         </div>
 
-        <button class="tilt-enable-btn" id="tiltEnableBtn" style="display:none;">Enable Tilt</button>
-        <div class="tilt-status" id="tiltStatus" style="display:none;">Tilt to run &bull; tap to jump</div>
-
         <div class="button-group">
             <button id="pauseBtn" onclick="togglePause()">Pause</button>
             <button onclick="resetGame()">New Game</button>
@@ -260,6 +308,14 @@
         </div>
 
         <a class="home-link" href="index.html">&larr; Back to Menu</a>
+    </div>
+
+    <div class="mobile-controls" id="mobileControls">
+        <div class="mc-move">
+            <button class="mc-btn" data-dir="left">&#9664;</button>
+            <button class="mc-btn" data-dir="right">&#9654;</button>
+        </div>
+        <button class="mc-btn mc-action-main" data-action="jump">JUMP</button>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -911,50 +967,29 @@
             }
         });
 
-        // Any tap on the screen jumps (touch devices), except on actual buttons/links
-        document.addEventListener('pointerdown', (e) => {
-            if (e.pointerType !== 'touch') return;
-            if (e.target.closest('button, a')) return;
-            keys['jump'] = true;
+        // On-screen Left/Right/Jump (touch devices) - discrete buttons beat tilt
+        // or tap-anywhere here: landing on a specific drifting/cracked/spiked
+        // floor needs precise, immediate, repeatable horizontal control, which
+        // a physical tilt gesture can't reliably deliver.
+        document.querySelectorAll('.mc-move [data-dir]').forEach((btn) => {
+            const dir = btn.dataset.dir;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                keys[dir] = true;
+            });
+            const release = (e) => {
+                e.preventDefault();
+                keys[dir] = false;
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
         });
 
-        // Tilt controls: phone gamma (left/right tilt) drives running
-        const TILT_DEADZONE = 6;
-        function handleTilt(e) {
-            const gamma = e.gamma;
-            if (gamma === null) return;
-            if (gamma > TILT_DEADZONE) {
-                keys['right'] = true;
-                keys['left'] = false;
-            } else if (gamma < -TILT_DEADZONE) {
-                keys['left'] = true;
-                keys['right'] = false;
-            } else {
-                keys['left'] = false;
-                keys['right'] = false;
-            }
-        }
-
-        function startTilt() {
-            window.addEventListener('deviceorientation', handleTilt);
-            document.getElementById('tiltStatus').style.display = 'block';
-        }
-
-        const tiltEnableBtn = document.getElementById('tiltEnableBtn');
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            // iOS 13+ requires an explicit user gesture to grant motion access
-            tiltEnableBtn.style.display = 'inline-block';
-            tiltEnableBtn.addEventListener('click', () => {
-                DeviceOrientationEvent.requestPermission().then((state) => {
-                    if (state === 'granted') {
-                        startTilt();
-                        tiltEnableBtn.style.display = 'none';
-                    }
-                }).catch(() => {});
-            });
-        } else if (window.DeviceOrientationEvent) {
-            startTilt();
-        }
+        document.querySelector('.mc-btn[data-action="jump"]').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            keys['jump'] = true;
+        });
 
         resetGame();
         requestAnimationFrame(gameLoop);
