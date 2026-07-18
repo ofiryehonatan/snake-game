@@ -14,64 +14,19 @@
         }
 
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            overflow: hidden;
             background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 100%);
             font-family: 'Arial', sans-serif;
         }
 
-        .container {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-            max-width: 460px;
-            width: 92vw;
-        }
-
-        h1 {
-            color: white;
-            margin-bottom: 5px;
-            font-size: 2em;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .board-row {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 12px;
-            margin: 20px 0;
-        }
-
+        /* ==== Full-viewport canvas (default view) ====
+           The canvas is always fixed to fill the screen, aspect ratio
+           preserved via object-fit:contain (letterboxed if needed). Every
+           other page element - title, score, buttons, instructions, the
+           NEXT-piece preview - lives inside the menu overlay instead, so
+           the default view is just the board and a small menu button. */
         #gameCanvas {
-            border: 3px solid white;
-            background-color: #12121f;
             display: block;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            max-width: 78%;
-            max-height: 55vh;
-            height: auto;
-            object-fit: contain;
-            touch-action: none;
-        }
-
-        /* ==== Full Size mode: stretch the canvas to fill the viewport ====
-           Canvas and the toggle button get moved to be direct children of
-           <body> by JS before this class is toggled on, since .container has
-           backdrop-filter (a stacking-context/containing-block trigger) that
-           would otherwise trap a position:fixed descendant below the true
-           viewport-level siblings like the mobile controls bar. */
-        body.fullscreen-game {
-            overflow: hidden;
-        }
-
-        body.fullscreen-game #gameCanvas {
             position: fixed;
             top: 0;
             left: 0;
@@ -79,22 +34,95 @@
             height: 100vh;
             max-width: 100vw;
             max-height: 100vh;
-            margin: 0;
+            object-fit: contain;
+            background-color: #12121f;
+            touch-action: none;
             border: none;
-            border-radius: 0;
-            box-shadow: none;
-            z-index: 9999;
+            margin: 0;
+            z-index: 1;
         }
 
-        body.fullscreen-game #fullscreenBtn {
+        .menu-btn {
             position: fixed;
             top: 14px;
             right: 14px;
-            z-index: 10001;
+            z-index: 3000;
+            width: 46px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #7c5cff 0%, #5b3fd6 100%);
+            border: none;
+            color: white;
+            font-size: 1.3em;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+            -webkit-tap-highlight-color: transparent;
         }
 
-        body.fullscreen-game .mobile-controls {
-            z-index: 10000;
+        .menu-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .menu-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* ==== Settings/instructions overlay ====
+           Opening it pauses the game; closing it (X or a tap on the dark
+           backdrop) resumes. Everything that used to live on the page by
+           default now lives here instead. */
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(18, 18, 20, 0.93);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 4000;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .menu-overlay.open {
+            display: flex;
+            justify-content: center;
+        }
+
+        .menu-content {
+            text-align: center;
+            max-width: 460px;
+            width: 100%;
+            height: fit-content;
+            position: relative;
+            padding-top: 10px;
+        }
+
+        .menu-close {
+            position: absolute;
+            top: -6px;
+            right: 0;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.6em;
+            line-height: 1;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 5px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         /* ==== Floating mobile controls (frosted-glass buttons, zero container background) ====
@@ -123,13 +151,6 @@
         @media (hover: none) and (pointer: coarse) {
             .mobile-controls {
                 display: flex;
-            }
-            body {
-                align-items: flex-start;
-            }
-            .container {
-                max-height: calc(100vh - 260px);
-                overflow-y: auto;
             }
         }
 
@@ -202,6 +223,12 @@
             font-weight: bold;
         }
 
+        .board-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 12px;
+        }
 
         .side-panel {
             display: flex;
@@ -253,40 +280,14 @@
             margin-top: 16px;
             font-size: 0.85em;
             line-height: 1.6;
+            text-align: left;
         }
 
-        .controls-details {
-            margin-top: 16px;
-        }
-
-        .controls-details > summary {
-            color: white;
-            font-size: 0.95em;
-            font-weight: bold;
-            cursor: pointer;
-            list-style: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            user-select: none;
-        }
-
-        .controls-details > summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .controls-details > summary::before {
-            content: '\25B8';
-            display: inline-block;
-            transition: transform 0.15s ease;
-        }
-
-        .controls-details[open] > summary::before {
-            transform: rotate(90deg);
-        }
-
-        .controls-details .controls {
-            margin-top: 10px;
+        .controls strong.section-title {
+            display: block;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 8px;
         }
 
         .difficulty-row {
@@ -373,7 +374,7 @@
             padding: 40px;
             border-radius: 20px;
             border: 3px solid #9be564;
-            z-index: 1000;
+            z-index: 2501;
             text-align: center;
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
             max-width: 90vw;
@@ -403,7 +404,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
+            z-index: 2500;
         }
 
         .home-link {
@@ -420,61 +421,9 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🧗 STACK CLIMBER</h1>
-        <div style="color:white;margin-bottom:10px;font-size:0.9em;opacity:0.85;">by Ofir Yehonatan</div>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
 
-        <details class="controls-details" id="controlsDetails" open>
-            <summary>How to Play</summary>
-            <div class="controls">
-                <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
-                <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
-                Touch: PIECE and CHARACTER buttons steer each independently, Rotate/Drop/Jump on the right<br>
-                Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
-            </div>
-        </details>
-        <script>
-            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-                document.getElementById('controlsDetails').open = false;
-            }
-        </script>
-
-        <div class="board-row">
-            <canvas id="gameCanvas" width="300" height="600"></canvas>
-            <div class="side-panel">
-                <div class="next-label">NEXT</div>
-                <canvas id="nextCanvas" width="80" height="80"></canvas>
-            </div>
-        </div>
-
-        <div class="info">
-            <div class="score-box">Score: <span id="score">0</span></div>
-            <div class="lines-box">Lines: <span id="lines">0</span></div>
-            <div class="level-box">Level: <span id="level">1</span></div>
-            <div class="best-box">Best: <span id="best">0</span></div>
-        </div>
-
-        <div class="difficulty-row" id="difficultyRow">
-            <span class="diff-label">Difficulty:</span>
-            <button class="diff-btn" data-diff="easy" onclick="selectDifficulty('easy')">Easy</button>
-            <button class="diff-btn" data-diff="medium" onclick="selectDifficulty('medium')">Medium</button>
-            <button class="diff-btn" data-diff="hard" onclick="selectDifficulty('hard')">Hard</button>
-        </div>
-
-        <div class="difficulty-row">
-            <span class="diff-label">Start Level:</span>
-            <select id="startLevelSelect" class="level-select" onchange="setStartLevel(this.value)"></select>
-        </div>
-
-        <div class="button-group">
-            <button id="pauseBtn" onclick="togglePause()">Pause</button>
-            <button onclick="resetGame()">New Game</button>
-            <button id="muteBtn" onclick="toggleMute()">🔊</button>
-            <button id="fullscreenBtn" onclick="toggleFullscreen()" title="Full Size">⛶</button>
-        </div>
-
-        <a href="index.html" class="home-link">&larr; Back to Menu</a>
-    </div>
+    <button class="menu-btn" id="menuBtn" title="Menu">&#9776;</button>
 
     <div class="mobile-controls" id="mobileControls">
         <div class="mc-move-cluster">
@@ -495,6 +444,57 @@
                 <button class="mc-btn mc-secondary" data-piece="drop">DROP</button>
             </div>
             <button class="mc-btn mc-action-main" data-char="jump">JUMP</button>
+        </div>
+    </div>
+
+    <div class="menu-overlay" id="menuOverlay">
+        <div class="menu-content">
+            <button class="menu-close" id="menuClose" title="Close">&#10005;</button>
+
+            <h1>🧗 STACK CLIMBER</h1>
+            <div style="color:white;margin-bottom:10px;font-size:0.9em;opacity:0.85;">by Ofir Yehonatan</div>
+
+            <div class="board-row">
+                <div class="side-panel">
+                    <div class="next-label">NEXT</div>
+                    <canvas id="nextCanvas" width="80" height="80"></canvas>
+                </div>
+            </div>
+
+            <div class="info">
+                <div class="score-box">Score: <span id="score">0</span></div>
+                <div class="lines-box">Lines: <span id="lines">0</span></div>
+                <div class="level-box">Level: <span id="level">1</span></div>
+                <div class="best-box">Best: <span id="best">0</span></div>
+            </div>
+
+            <div class="difficulty-row" id="difficultyRow">
+                <span class="diff-label">Difficulty:</span>
+                <button class="diff-btn" data-diff="easy" onclick="selectDifficulty('easy')">Easy</button>
+                <button class="diff-btn" data-diff="medium" onclick="selectDifficulty('medium')">Medium</button>
+                <button class="diff-btn" data-diff="hard" onclick="selectDifficulty('hard')">Hard</button>
+            </div>
+
+            <div class="difficulty-row">
+                <span class="diff-label">Start Level:</span>
+                <select id="startLevelSelect" class="level-select" onchange="setStartLevel(this.value)"></select>
+            </div>
+
+            <div class="button-group">
+                <button onclick="resetGame()">New Game</button>
+                <button id="pauseBtn" onclick="togglePause()">Pause</button>
+                <button id="muteBtn" onclick="toggleMute()">🔊</button>
+            </div>
+
+            <div class="controls">
+                <strong class="section-title">How to Play</strong>
+                <strong>Arrow Keys</strong> steer the falling piece (Up to rotate, Down to soft-drop) &nbsp;•&nbsp; <strong>Space</strong> hard-drops it<br>
+                <strong>A / D</strong> move your character, <strong>W</strong> jumps &nbsp;•&nbsp; P to pause<br>
+                Touch: PIECE and CHARACTER buttons steer each independently, Rotate/Drop/Jump on the right<br>
+                Clear lines like normal, but don't let a piece land on top of you &mdash; that's game over too!
+            </div>
+
+            <a href="index.html" class="home-link">&larr; Back to Menu</a>
         </div>
     </div>
 
@@ -687,41 +687,27 @@
             if (!musicMuted) startMusicLoopIfNeeded();
         }
 
-        // "Full Size" mode stretches the canvas to fill the viewport (aspect
-        // ratio preserved, letterboxed if needed) via CSS, instead of the
-        // browser's Fullscreen API. The canvas and this button are moved to
-        // be direct children of <body> - see the CSS comment above for why.
-        let fullSizeActive = false;
-        let fullSizeCanvasHome = null;
-        let fullSizeBtnHome = null;
-
-        function toggleFullscreen() {
-            const canvasEl = document.getElementById('gameCanvas');
-            const btn = document.getElementById('fullscreenBtn');
-            fullSizeActive = !fullSizeActive;
-            if (fullSizeActive) {
-                fullSizeCanvasHome = { parent: canvasEl.parentNode, next: canvasEl.nextSibling };
-                fullSizeBtnHome = { parent: btn.parentNode, next: btn.nextSibling };
-                document.body.appendChild(canvasEl);
-                document.body.appendChild(btn);
-                document.body.classList.add('fullscreen-game');
-            } else {
-                document.body.classList.remove('fullscreen-game');
-                fullSizeCanvasHome.parent.insertBefore(canvasEl, fullSizeCanvasHome.next);
-                fullSizeBtnHome.parent.insertBefore(btn, fullSizeBtnHome.next);
+        // ---- Settings/instructions menu: opening pauses, closing resumes ----
+        function openMenu() {
+            document.getElementById('menuOverlay').classList.add('open');
+            if (gameRunning && !gamePaused) {
+                gamePaused = true;
+                document.getElementById('pauseBtn').textContent = 'Resume';
             }
-            updateFullscreenBtn();
         }
 
-        function updateFullscreenBtn() {
-            const btn = document.getElementById('fullscreenBtn');
-            if (!btn) return;
-            btn.textContent = fullSizeActive ? '🗗' : '⛶';
-            btn.title = fullSizeActive ? 'Exit Full Size' : 'Full Size';
+        function closeMenu() {
+            document.getElementById('menuOverlay').classList.remove('open');
+            if (gameRunning && gamePaused) {
+                gamePaused = false;
+                document.getElementById('pauseBtn').textContent = 'Pause';
+            }
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && fullSizeActive) toggleFullscreen();
+        document.getElementById('menuBtn').addEventListener('click', openMenu);
+        document.getElementById('menuClose').addEventListener('click', closeMenu);
+        document.getElementById('menuOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'menuOverlay') closeMenu();
         });
 
         function playMoveSound() {
@@ -824,6 +810,7 @@
             document.getElementById('pauseBtn').textContent = 'Pause';
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('gameOverModal').style.display = 'none';
+            document.getElementById('menuOverlay').classList.remove('open');
             updateHUD();
             drawNextPreview();
         }
@@ -1092,6 +1079,10 @@
         // Using e.code (physical key position) instead of e.key (produced character)
         // so WASD still works when the OS keyboard layout isn't English/QWERTY.
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('menuOverlay').classList.contains('open')) {
+                closeMenu();
+                return;
+            }
             switch (e.code) {
                 case 'ArrowLeft':
                     movePiece(-1);
@@ -1175,7 +1166,6 @@
             btn.addEventListener('pointerleave', release);
             btn.addEventListener('pointercancel', release);
         });
-
 
         // ---- Rendering ----
         function drawPieceMatrix(matrix, pieceCol, pieceRow, color) {
